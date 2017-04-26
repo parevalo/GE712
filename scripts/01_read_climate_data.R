@@ -9,7 +9,7 @@
 
 # set working directory ----------------
 
-setwd("/projectnb/modislc/users/rkstan/pasturelands/cru.ts3.21/")
+setwd("/projectnb/modislc/users/rkstan/GE712/data/cru.ts4.00/")
 
 
 # init ----------------------
@@ -83,7 +83,7 @@ precip_mask <- list(raster("/projectnb/modislc/users/rkstan/pasturelands/cru.ts3
 # read in netcdf data for CRU 
 ##############################
 
-ncname <- sprintf("cru_ts3.23.1901.2014.%s.dat", args$vname)
+ncname <- sprintf("cru_ts4.00.1901.2015.%s.dat", args$vname)
 ncfname <- paste(ncname, ".nc", sep="")
 
 # open a NetCDF file 
@@ -116,7 +116,7 @@ nc_close(ncin)
 # get netcdf file into raster format ---------------------
 
 # change to x and y coordinate system 
-for (i in 1:1368){
+for (i in 1:1380){
 
 xp <- data.frame(x=ttt$x, y=0)
 coordinates(xp)=~x+y
@@ -158,7 +158,7 @@ if(i==1){
 #stack NPP rasters 
 CRU <- stack(CRU_stack)
 
-CRU_s <- CRU[[1189:1368]]
+CRU_s <- CRU[[1189:1380]]
 CRU_sub <- mask(CRU_s, precip_mask[[args$num]],maskvalue=0,  updatevalue=NA)
 CRU_stack_sub <- unstack(CRU_sub)
 
