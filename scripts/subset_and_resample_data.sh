@@ -8,15 +8,15 @@ xmin=-81.5
 ymin=-56.5
 xmax=-34.5
 ymax=12.5
-
+overwrite=Yes
 
 # CRU Data
 
 cd /projectnb/modislc/users/rkstan/GE712/data/cru.ts4.00
 
-if [ ! -f "cru_ts4_SA.tif" ]; then
+if [ ! -f "cru_ts4_pasture.tif" -o $overwrite == "Yes" ]; then
     gdalwarp -t_srs EPSG:4326 -te $xmin $ymin $xmax $ymax \
-     -co COMPRESS=PACKBITS -overwrite \
+    -co COMPRESS=PACKBITS -overwrite \
       NETCDF:"cru_ts4.00.1901.2015.tmp.dat.nc":tmp  cru_ts4_SA.tif     
 fi
 
@@ -42,38 +42,12 @@ for i in $(find . -type f -name "3B43*.HDF"); do
     fi 
         
     # Extract data for mainland southamerica only
-    if [ ! -f $fname"_clip.tif" ]; then
+    if [ ! -f $fname"_clip.tif" -o $overwrite="Yes" ]; then  
         gdalwarp -te $xmin $ymin $xmax $ymax -dstnodata -9999 \
-         -tr 0.5 0.5 -tap -r bilinear -co COMPRESS=PACKBITS -overwrite \
+         -tr 0.5 0.5 -tap -r average -co COMPRESS=PACKBITS -overwrite \
          $fname"_warp.tif" $fname"_clip.tif"
     fi
 done
-
-# MODIS
-
-cd /projectnb/modislc/users/rkstan/GE712/data/MOD13C2
-
-for i in $(find . -type f -name "MOD13C2*.hdf"); do
-
-    fname=$(basename $i | awk -F ".hdf" '{print $1}')
-    
-    # Get EVI 
-    if [ ! -f $fname"_EVI.tif" ]; then
-        gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
-         -r average -co COMPRESS=PACKBITS \
-        HDF4_EOS:EOS_GRID:$fname".hdf:MOD_Grid_monthly_CMG_VI:CMG 0.05 Deg Monthly EVI" \
-        $fname"_EVI.tif"
-    fi
-
-    # Get quality band 
-    if [ ! -f $fname"_Quality.tif" ]; then
-        gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
-         -r average -co COMPRESS=PACKBITS \
-        HDF4_EOS:EOS_GRID:$fname".hdf:MOD_Grid_monthly_CMG_VI:CMG 0.05 Deg Monthly VI Quality" \
-        $fname"_Quality.tif"
-    fi
-done
-
 
 # PAR
 
@@ -81,13 +55,31 @@ cd /projectnb/modislc/users/rkstan/GE712/data/PAR
 
 # Clip (using its native coordinates from 0 t0 360)
 
-if [ ! -f "PAR_SA.tif" ]; then
+if [ ! -f "PAR_SA.tif" -o $overwrite="Yes" ]; then
     gdalwarp -t_srs EPSG:4326 -te 278.5 $ymin 325.5  $ymax \
-     -co COMPRESS=PACKBITS -overwrite -tr 0.5 0.5 -tap -r bilinear\
+     -co COMPRESS=PACKBITS -overwrite -tr 0.5 0.5 -tap -r average \
      NETCDF:"CERES_SYN1deg-Month_Terra-Aqua-MODIS_Ed3A_Subset_200301-201512.nc":sfc_comp_par_direct_all_mon \
      PAR_SA.tif
 
     # Edit georreferenced bounds
     gdal_edit.py -a_ullr $xmin $ymax $xmax $ymin PAR_SA.tif
+fi
+
+# MODIS
+cd /projectnb/modislc/users/rkstan/GE712/data/MOD13C2
+
+if [ ! -f "filtered_EVI_resample_05.tif" -o $overwrite="Yes" ]; then
+    gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
+     -r average -co COMPRESS=PACKBITS -overwrite \
+    filtered_EVI.tif filtered_EVI_resample_05.tif
+fi
+
+# Resample pastures to match the grid
+cd /projectnb/modislc/users/rkstan/GE712/data/pasture_extent 
+
+if [ ! -f "pasture2000_resample_05.tif" -o $overwrite="Yes" ]; then
+    gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
+     -r average -co COMPRESS=PACKBITS -overwrite \
+   pasture2000_GT_06.tif pasture2000_GT_06_resample_05.tif
 fi
 
