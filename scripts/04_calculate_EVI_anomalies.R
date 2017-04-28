@@ -51,16 +51,20 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 
 # read in pastureland extent data --------------------------
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
+pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif")
 
 
 # read in EVI data --------------------------
-EVI <- brick("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/filtered_EVI_resample_0.5.tif") # read in the red SDS as a raster
-EVI_sub_unstack <- unstack(EVI) # unstack the raster brick into raster layers
-EVI_vals <- values(EVI_time_sub)
+EVI <- brick("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/filtered_EVI_resample_05.tif") # read in the red SDS as a raster
+EVI_sa_sub <- mask(EVI, sa) # limit to extent of South America shape file
+EVI_sub <- mask(EVI_sa_sub, pasture_2000_sub, maskvalue=0,  updatevalue=NA) # limit to extent of rangeland extent file
+
+EVI_sub_unstack <- unstack(EVI_sub) # unstack the raster brick into raster layers
+EVI_vals <- values(EVI_sub)
 
 # calculate monthly EVI anomalies --------------------------------
+month_list <- list()
+year_list <- list()
 
 # calculate the anomalies for each month (e.g., subtract January EVI from mean January EVI for 14 year time span)
 for (t in 1:13){
@@ -68,22 +72,17 @@ for (t in 1:13){
     # calculate the mean EVI of each month over the whole 14 year period (excluding each time the month of interest)
     EVI_month_mean <- calc(dropLayer(stack(EVI_sub_unstack[m_year==m]), t),mean, na.rm=T)
     EVI_month_sd <- calc(dropLayer(stack(EVI_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
+    EVI_month_year <- stack(EVI_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
-    EVI_anomaly <- (stack(EVI_sub_unstack[m_year==m]) - EVI_month_mean)/EVI_month_sd
-    
-    if(m==1){
-      EVI_monthly_anomalies <- EVI_anomaly
-      
-    }else{
-      EVI_monthly_anomalies  <- append(EVI_monthly_anomalies, EVI_anomaly)    
-      
-    }
+    EVI_anomaly <- (EVI_month_year - EVI_month_mean)/EVI_month_sd
+    month_list[[m]] <- EVI_anomaly
     
   }
-  
+  year_list[[t]] <- month_list
 }
 
+EVI_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 
 # get the anomalies in a matrix and save as csv 
 EVI_monthly_anomalies_vals <- get_raster_vals(stack(EVI_monthly_anomalies))

@@ -56,8 +56,7 @@ cl <- makeCluster(8)
 clusterEvalQ(cl, {library(raster)})
 
 # read in pastureland extent data --------------------------
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
+pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif")
 
 # read in TRMM data --------------------------
 path_TRMM <- "/projectnb/modislc/users/rkstan/GE712/data/TRMM/" # path to your TRMM files
@@ -77,35 +76,36 @@ precip_list <- parLapply(cl, TRMM_tile_files, Getprecip)
 precip_stack <- stack(unlist(precip_list)) # unlist and convert to a single RasterStack
 precip_time_sub <- precip_stack[[37:192]] # subset only desired time period 2003-2016
 
-precip_sub <- mask(precip_time_sub, sa) # limit to extent of South America shape file 
+precip_sa_sub <- mask(precip_time_sub, sa) # limit to extent of South America shape file
+precip_sub <- mask(precip_sa_sub, pasture_2000_sub,maskvalue=0,  updatevalue=NA) # limit to extent of rangeland extent file
 precip_sub_unstack <- unstack(precip_sub) # unstack the raster brick into raster layers
 
-precip <- values(precip_stack)
+precip <- values(precip_sub)
 
 # calculate monthly precipitation anomalies --------------------------------
+month_list <- list()
+year_list <- list()
 
 # calculate the anomalies for each month (e.g., subtract January precipitation from mean January precipitation for 14 year time span)
 for (t in 1:13){
   for (m in 1:12){
+
     # calculate the mean precipitation of each month over the whole 14 year period (excluding each time the month of interest)
     precip_month_mean <- calc(dropLayer(stack(precip_sub_unstack[m_year==m]), t),mean, na.rm=T)
     precip_month_sd <- calc(dropLayer(stack(precip_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
+    precip_month_year <- stack(precip_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
-    precip_anomaly <- (stack(precip_sub_unstack[m_year==m]) - precip_month_mean)/precip_month_sd
-    
-    if(m==1){
-      precip_monthly_anomalies <-precip_anomaly
-      
-    }else{
-      precip_monthly_anomalies  <- append(precip_monthly_anomalies, precip_anomaly)    
-      
-    }
+    precip_anomaly <- (precip_month_year - precip_month_mean)/precip_month_sd
+    month_list[[m]] <- precip_anomaly
+  
+    } 
+    year_list[[t]] <- month_list
     
   }
   
-}
 
+precip_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 
 # get the anomalies in a matrix and save as csv 
 precip_monthly_anomalies_vals <- get_raster_vals(stack(precip_monthly_anomalies))
