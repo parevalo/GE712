@@ -51,19 +51,23 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 
 # read in pastureland extent data --------------------------
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
-
+pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif")
 
 # read in CRU data --------------------------
 temp <- brick("/projectnb/modislc/users/rkstan/GE712/data/cru.ts4.00/cru_ts4_SA.tif") # read in the red SDS as a raster
 temp_time_sub <- temp[[1225:1380]] # subset only desired time period 2003-2016
-temp_sub_unstack <- unstack(temp_time_sub) # unstack the raster brick into raster layers
+temp_sa_sub <- mask(temp_time_sub, sa) # limit to extent of South America shape file
+temp_sub <- mask(temp_sa_sub, pasture_2000_sub, maskvalue=0,  updatevalue=NA) # limit to extent of rangeland extent file
 
-temp <- values(temp_time_sub)
+temp_sub_unstack <- unstack(temp_sub) # unstack the raster brick into raster layers
+
+
+temp <- values(temp_sub)
 
 
 # calculate monthly temperature anomalies --------------------------------
+month_list <- list()
+year_list <- list()
 
 # calculate the anomalies for each month (e.g., subtract January temp from mean January temperature for 14 year time span)
 for (t in 1:13){
@@ -71,22 +75,18 @@ for (t in 1:13){
     # calculate the mean temperature of each month over the whole 14 year period (excluding each time the month of interest)
     temp_month_mean <- calc(dropLayer(stack(temp_sub_unstack[m_year==m]), t),mean, na.rm=T)
     temp_month_sd <- calc(dropLayer(stack(temp_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
+    temp_month_year <- stack(temp_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
-    temp_anomaly <- (stack(temp_sub_unstack[m_year==m]) - temp_month_mean)/temp_month_sd
-    
-    if(m==1){
-      temp_monthly_anomalies <- temp_anomaly
-      
-    }else{
-      temp_monthly_anomalies  <- append(temp_monthly_anomalies, temp_anomaly)    
-      
-    }
+    temp_anomaly <- (temp_month_year - temp_month_mean)/temp_month_sd
+    month_list[[m]] <- temp_anomaly
+
     
   }
-  
+   year_list[[t]] <- month_list
 }
 
+temp_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 
 # get the anomalies in a matrix and save as csv 
 temp_monthly_anomalies_vals <- get_raster_vals(stack(temp_monthly_anomalies))
