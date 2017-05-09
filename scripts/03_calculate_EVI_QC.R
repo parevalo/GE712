@@ -127,7 +127,7 @@ south_am <- brick(nrows=1380, ncols=940, nl=156, crs="+proj=longlat +datum=WGS84
 south_am <- setValues(south_am, evi_vals)
 
 setwd("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/")
-writeRaster(south_am, file="filtered_EVI.hdr", format="ENVI", overwrite=TRUE)
+writeRaster(south_am, NAflag=-9999, file="filtered_EVI.hdr", format="ENVI", overwrite=TRUE)
 #writeRaster(south_am, file="filtered_EVI.tif", format="GTiff", options=c("COMPRESS=PACKBITS"))
 
 
