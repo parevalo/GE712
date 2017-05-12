@@ -14,6 +14,22 @@ precip_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/precip_seas_an
 temp_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/temp_seas_anomalies.csv")
 EVI_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/EVI_seas_anomalies.csv")
 
+# Merge and remove rows with at least one NA
+total_monthly <- cbind(EVI_monthly_anomalies, precip_monthly_anomalies, temp_monthly_anomalies)
+total_seasonal <- cbind(EVI_seas_anomalies, precip_seas_anomalies, temp_seas_anomalies)
+
+total_monthly_filtered = na.omit(total_monthly)
+total_seas_filtered = na.omit(total_seasonal)
+
+# Split variables back into separate df's
+total_EVI_monthly <- as.data.frame(total_monthly_filtered[,1:156])
+total_precip_monthly <- as.data.frame(total_monthly_filtered[,157:312])
+total_temp_monthly <- as.data.frame(total_monthly_filtered[,313:468])
+
+total_EVI_seas <- as.data.frame(total_seas_filtered[,1:52])
+total_precip_seas <- as.data.frame(total_seas_filtered[,53:104])
+total_temp_seas <- as.data.frame(total_seas_filtered[,105:156])
+
 
 # Function to tidy each of the dataframes read from the csv files. 
 tidy_data = function(df, period_name){
@@ -22,19 +38,19 @@ tidy_data = function(df, period_name){
   
   # Gather into rows and assign proper column names
   temp_df = gather(df, key="ID", value="value")
-  head(temp_df)
   colnames(temp_df) = c("ID", period_name, "value")
   temp_df_sorted =  arrange(temp_df, ID)
 }
 
-# Tidy months and seasons
-tidy_precip_monthly_anom = tidy_data(precip_monthly_anomalies, "month")
-tidy_temp_monthly_anom = tidy_data(temp_monthly_anomalies, "month")
-tidy_EVI_monthly_anom = tidy_data(EVI_monthly_anomalies, "month")
 
-tidy_precip_seas_anom = tidy_data(precip_seas_anomalies, "season")
-tidy_temp_seas_anom = tidy_data(temp_seas_anomalies, "season")
-tidy_EVI_seas_anom = tidy_data(EVI_seas_anomalies, "season")
+# Tidy months and seasons
+tidy_precip_monthly_anom = tidy_data(total_precip_monthly, "month")
+tidy_temp_monthly_anom = tidy_data(total_temp_monthly, "month")
+tidy_EVI_monthly_anom = tidy_data(total_EVI_monthly, "month")
+
+tidy_precip_seas_anom = tidy_data(total_precip_seas, "season")
+tidy_temp_seas_anom = tidy_data(total_temp_seas, "season")
+tidy_EVI_seas_anom = tidy_data(total_EVI_seas, "season")
 
 
 # Merge into months and seasons
@@ -59,11 +75,10 @@ mam = full_dataset_season[mam_index,]
 jja = full_dataset_season[jja_index,]
 son = full_dataset_season[son_index,]
 
-# Save full dataset and seasonal
-write.csv(full_dataset_season, "panel_seasonal_dataset.csv")
-write.csv(full_dataset_month, "panel_monthly_dataset.csv")
-write.csv(djf, "djf.csv")
-write.csv(mam, "mam.csv")
-write.csv(jja, "jja.csv")
-write.csv(son, "son.csv")
-
+# Save full dataset and seasonal with variables only so that RATS can read it
+write.csv(full_dataset_season[,3:5], "panel_seasonal_dataset.csv")
+write.csv(full_dataset_month[,3:5], "panel_monthly_dataset.csv")
+write.csv(djf[,3:5], "djf.csv")
+write.csv(mam[,3:5], "mam.csv")
+write.csv(jja[,3:5], "jja.csv")
+write.csv(son[,3:5], "son.csv")
