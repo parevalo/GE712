@@ -76,9 +76,9 @@ jja = full_dataset_season[jja_index,]
 son = full_dataset_season[son_index,]
 
 # Save full dataset and seasonal with variables only so that RATS can read it
-write.csv(full_dataset_season[,3:5], "panel_seasonal_dataset.csv")
-write.csv(full_dataset_month[,3:5], "panel_monthly_dataset.csv")
-write.csv(djf[,3:5], "djf.csv")
-write.csv(mam[,3:5], "mam.csv")
-write.csv(jja[,3:5], "jja.csv")
-write.csv(son[,3:5], "son.csv")
+write.csv(full_dataset_season[,3:5], "panel_seasonal_dataset.csv", quote =F, row.names = F)
+write.csv(full_dataset_month[,3:5], "panel_monthly_dataset.csv", quote =F, row.names = F)
+write.csv(djf[,3:5], "djf.csv", quote =F, row.names = F)
+write.csv(mam[,3:5], "mam.csv", quote =F, row.names = F)
+write.csv(jja[,3:5], "jja.csv", quote =F, row.names = F)
+write.csv(son[,3:5], "son.csv", quote =F, row.names = F)
