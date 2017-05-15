@@ -69,7 +69,6 @@ jja_index = grep("JJA", full_dataset_season$season)
 son_index = grep("SON", full_dataset_season$season)
 
 # Subset the seasons!
-
 djf = full_dataset_season[djf_index,]
 mam = full_dataset_season[mam_index,]
 jja = full_dataset_season[jja_index,]
@@ -82,3 +81,35 @@ write.csv(djf[,3:5], "djf.csv", quote =F, row.names = F)
 write.csv(mam[,3:5], "mam.csv", quote =F, row.names = F)
 write.csv(jja[,3:5], "jja.csv", quote =F, row.names = F)
 write.csv(son[,3:5], "son.csv", quote =F, row.names = F)
+
+
+# Rename var columns for each season so that we can use values from previous seasons
+# as a different "variable" (instead of having to deal with RATS lagging). Format ready for RATS
+
+# SUMMER DATA (DJF) starts in SECOND year bc we need spring(SON) and winter (JJA) from previous year
+djf2 = cbind(djf[-1, 3:5], son[1:(nrow(son)-1), 3:4], jja[1:(nrow(jja)-1), 3:4])
+colnames(djf2) = c("precip_anom_djf", "temp_anom_djf", "evi_anom_djf", 
+                   "precip_anom_son", "temp_anom_son", "precip_anom_jja", "temp_anom_jja")
+
+# FALL DATA (MAM) starts in SECOND year bc we need summer(DJF) and spring (SON) from previous year
+mam2 = cbind(mam[-1,3:5], djf[1:(nrow(djf)-1), 3:4], son[1:(nrow(son)-1), 3:4])
+colnames(djf2) = c("precip_anom_mam", "temp_anom_mam", "evi_anom_mam", 
+                   "precip_anom_djf", "temp_anom_djf", "precip_anom_son", "temp_anom_son")
+
+# WINTER DATA (JJA) starts in FIRST year bc we have fall(MAM) and summer(DJF) from that year
+jja2 = cbind(jja[,3:5], mam[, 3:4], djf[, 3:4])
+colnames(jja2) = c("precip_anom_jja", "temp_anom_jja", "evi_anom_jja", 
+                   "precip_anom_mam", "temp_anom_mam", "precip_anom_djf", "temp_anom_djf")
+
+# SPRING DATA (SON) starts in FIRST year bc we have winter(JJA) and fall(MAM) from that year
+son2 = cbind(son[,3:5], jja[, 3:4], mam[, 3:4])
+colnames(son2) = c("precip_anom_son", "temp_anom_son", "evi_anom_son", 
+                   "precip_anom_jja", "temp_anom_jja", "precip_anom_mam", "temp_anom_mam")
+
+
+# Save these datasets for use in RATS
+
+write.csv(djf2, "djf2.csv", quote =F, row.names = F)
+write.csv(mam2, "mam2.csv", quote =F, row.names = F)
+write.csv(jja2, "jja2.csv", quote =F, row.names = F)
+write.csv(son2, "son2.csv", quote =F, row.names = F)
