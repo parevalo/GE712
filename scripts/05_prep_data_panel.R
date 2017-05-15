@@ -87,13 +87,24 @@ write.csv(son[,3:5], "son.csv", quote =F, row.names = F)
 # as a different "variable" (instead of having to deal with RATS lagging). Format ready for RATS
 
 # SUMMER DATA (DJF) starts in SECOND year bc we need spring(SON) and winter (JJA) from previous year
-djf2 = cbind(djf[-1, 3:5], son[1:(nrow(son)-1), 3:4], jja[1:(nrow(jja)-1), 3:4])
+# so we need to remove the first DJF year FROM ALL INDIVIDUALS and the last from SON and JJA
+
+djf_sub = filter(djf, season != "DJF")
+son_sub = filter(son, season != "SON.12")
+jja_sub = filter(jja, season != "JJA.12")
+
+djf2 = cbind(djf_sub[,3:5], son_sub[,3:4], jja_sub[,3:4])
 colnames(djf2) = c("precip_anom_djf", "temp_anom_djf", "evi_anom_djf", 
                    "precip_anom_son", "temp_anom_son", "precip_anom_jja", "temp_anom_jja")
 
 # FALL DATA (MAM) starts in SECOND year bc we need summer(DJF) and spring (SON) from previous year
-mam2 = cbind(mam[-1,3:5], djf[1:(nrow(djf)-1), 3:4], son[1:(nrow(son)-1), 3:4])
-colnames(djf2) = c("precip_anom_mam", "temp_anom_mam", "evi_anom_mam", 
+# so we need to remove the first MAM year FROM ALL INDIVIDUALS and the last from DJF and SON
+mam_sub = filter(mam, season != "MAM")
+djf_sub = filter(djf, season != "DJF.12")
+son_sub = filter(son, season != "SON.12")
+
+mam2 = cbind(mam_sub[,3:5], djf_sub[,3:4], son_sub[,3:4])
+colnames(mam2) = c("precip_anom_mam", "temp_anom_mam", "evi_anom_mam", 
                    "precip_anom_djf", "temp_anom_djf", "precip_anom_son", "temp_anom_son")
 
 # WINTER DATA (JJA) starts in FIRST year bc we have fall(MAM) and summer(DJF) from that year
