@@ -122,7 +122,7 @@ evi_vals[is.na(qc_fin)]<-NA
 
 # create a raster file from the filtered EVI timeseries 
 
-south_am <- brick(nrows=1380, ncols=940, nl=156, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
+south_am <- brick(nrows=1380, ncols=940, nl=157, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
                   xmn=-81.5, xmx=-34.5, ymn=-56.5, ymx=12.5)
 south_am <- setValues(south_am, evi_vals)
 
