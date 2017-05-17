@@ -70,14 +70,14 @@ cd /projectnb/modislc/users/rkstan/GE712/data/MOD13C2
 
 if [ ! -f "filtered_EVI_resample_05.tif" -o $overwrite == "Yes" ]; then
     gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
-     -r average -co COMPRESS=PACKBITS -overwrite \
-    filtered_EVI.envi filtered_EVI_resample_05.tif
+     -r bilinear -co COMPRESS=PACKBITS -overwrite \
+    filtered_EVI.envi filtered_EVI_resample_05_bilinear.tif
 fi
 
 # Resample pastures to match the grid
 cd /projectnb/modislc/users/rkstan/GE712/data/pasture_extent 
 
-if [ ! -f "pasture2000_resample_05.tif" -o $overwrite == "Yes" ]; then
+if [ ! -f "pasture2000_GT_06_resample_05.tif" -o $overwrite == "Yes" ]; then
     gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
      -r average -co COMPRESS=PACKBITS -overwrite \
    pasture2000_GT_06.tif pasture2000_GT_06_resample_05.tif
