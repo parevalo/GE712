@@ -1,3 +1,6 @@
+# This script read and filter EVI timeseries based on QA/QC from MOD13C2 tile stack
+# Updated: April 2017 by Radost Stanimirova 
+
 # read in required libraries ------------------------
 library(sp)
 library(rgdal)
@@ -33,29 +36,22 @@ get_raster_vals <- function(data){
 
 
 # assign in variables ------------------------
-start.year <- "2003"
-end.year <- "2015"
-
 data(wrld_simpl)
 SA <- c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana", 
         "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela")
 sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
+path_MOD13C2 <- "/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/" # path to your MOD13C2 files
+
 # read in data ----------------------------
 
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
-
-path_MOD13C2 <- "/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/" # path to your MOD13C2 files
-r <- raster(nrows=600, ncols=700)
-rowcol <- rowColFromCell(r, c(1:420000))
-
+# read EVI timeseries 
 GetEVI <- function(MOD13C2_file_path, as.int=T){
-  fun <- function(x) {x[x==32767] <- NA; return(x)}
+  fun <- function(x) {x[x==-3000] <- NA; return(x)}
   
   SDS_EVI <- MOD13C2_file_path
   evi <- raster(SDS_EVI) # read in the red SDS as a raster
-  NAvalue(evi) <- 32767
+  NAvalue(evi) <- -3000
   evi <- calc(evi, fun)
   return(evi)
   
@@ -74,13 +70,16 @@ evi_vals <- values(evi_final)
 
 evi_vals[which(evi_vals<0 & !is.na(evi_vals))] <- NA
 
-path_MOD13C2 <- "/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/"
+# read EVI QA/QC timeseries 
 MOD13C2_tile_files <- Sys.glob(file.path(path_MOD13C2, paste("MOD13C2", "*", '006',"*", 'SA.QA.clip', "tif", sep=".")))
 
 GetQC <- function(MOD13C2_file_path, as.int=T){
+  fun <- function(x) {x[x==65535] <- NA; return(x)}
   
   SDS_QC <- MOD13C2_file_path
   qc <- raster(SDS_QC) # read in the red SDS as a raster
+  NAvalue(qc) <- 65535
+  qc <- calc(qc, fun)
   return(qc)
   
 }
@@ -121,11 +120,14 @@ qc_fin[(qc_00_01==1 | qc_00_01==0) & (qc_02_05>=0 & qc_02_05<=11) & (qc_08==0) &
 #evi_vals[which(qc_fin==0)]<-NA
 evi_vals[is.na(qc_fin)]<-NA
 
+# create a raster file from the filtered EVI timeseries 
+
 south_am <- brick(nrows=1380, ncols=940, nl=156, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
                   xmn=-81.5, xmx=-34.5, ymn=-56.5, ymx=12.5)
 south_am <- setValues(south_am, evi_vals)
 
 setwd("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/")
-writeRaster(south_am, file="filtered_EVI.tif", format="GTiff", overwrite=TRUE)
+writeRaster(south_am, NAflag=-9999, file="filtered_EVI.hdr", format="ENVI", overwrite=TRUE)
+#writeRaster(south_am, file="filtered_EVI.tif", format="GTiff", options=c("COMPRESS=PACKBITS"))
 
 

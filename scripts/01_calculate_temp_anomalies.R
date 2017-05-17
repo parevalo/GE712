@@ -51,19 +51,25 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 
 # read in pastureland extent data --------------------------
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
-
+pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif")
+pasture_points <- readOGR("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/", "pasture2000_GT_06_SA_pts_025_select")
 
 # read in CRU data --------------------------
 temp <- brick("/projectnb/modislc/users/rkstan/GE712/data/cru.ts4.00/cru_ts4_SA.tif") # read in the red SDS as a raster
 temp_time_sub <- temp[[1225:1380]] # subset only desired time period 2003-2016
-temp_sub_unstack <- unstack(temp_time_sub) # unstack the raster brick into raster layers
+temp_sa_sub <- mask(temp_time_sub, sa) # limit to extent of South America shape file
 
-temp <- values(temp_time_sub)
+temp_sub <- mask(temp_sa_sub, pasture_2000_sub, maskvalue=NA,  updatevalue=NA) # limit to extent of rangeland extent file
+
+temp_sub_unstack <- unstack(temp_sub) # unstack the raster brick into raster layers
+
+
+temp <- values(temp_sub)
 
 
 # calculate monthly temperature anomalies --------------------------------
+month_list <- list()
+year_list <- list()
 
 # calculate the anomalies for each month (e.g., subtract January temp from mean January temperature for 14 year time span)
 for (t in 1:13){
@@ -71,21 +77,20 @@ for (t in 1:13){
     # calculate the mean temperature of each month over the whole 14 year period (excluding each time the month of interest)
     temp_month_mean <- calc(dropLayer(stack(temp_sub_unstack[m_year==m]), t),mean, na.rm=T)
     temp_month_sd <- calc(dropLayer(stack(temp_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
+    temp_month_year <- stack(temp_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
-    temp_anomaly <- (stack(temp_sub_unstack[m_year==m]) - temp_month_mean)/temp_month_sd
-    
-    if(m==1){
-      temp_monthly_anomalies <- temp_anomaly
-      
-    }else{
-      temp_monthly_anomalies  <- append(temp_monthly_anomalies, temp_anomaly)    
-      
-    }
+    temp_anomaly <- (temp_month_year - temp_month_mean)/temp_month_sd
+    month_list[[m]] <- temp_anomaly
+
     
   }
-  
+   year_list[[t]] <- month_list
 }
+
+temp_monthly_anomalies <- stack(unlist(year_list, recursive = T))
+# points_extract <- extract(temp_monthly_anomalies, pasture_points, sp=T)
+# points_extract@data
 
 
 # get the anomalies in a matrix and save as csv 
@@ -115,18 +120,49 @@ for (t in 1:13){
   
 }
 
+temp_seas_anomalies <- stack(unlist(temp_seas_anomalies))
+# points_seas <- extract(temp_seas_anomalies, pasture_points, sp=T)
+# points_seas@data
+
 # get the seasonal anomalies in a matrix and save as csv 
 temp_seas_anomalies_vals <- get_raster_vals(stack(temp_seas_anomalies))
 write.csv(temp_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
 
+
+# calculate yearly anomalies -------------------------------------------------
+temp_year <- stackApply(temp_sub, year, fun=mean, na.rm=T)
+for (t in 1:13){
+temp_year_mean <-calc(dropLayer(stack(temp_sub_unstack), which(year==t, arr.ind=TRUE)),mean, na.rm=T)
+temp_year_sd <-calc(dropLayer(stack(temp_sub_unstack), which(year==t, arr.ind=TRUE)),sd, na.rm=T)
+temp_year_t <- temp_year[[t]]
+
+# calculate the anomaly 
+temp_anomaly <- (temp_year_t - temp_year_mean)/temp_year_sd
+
+if(t==1){
+  temp_year_anomalies <- temp_anomaly
+  
+}else{
+  temp_year_anomalies  <- append(temp_year_anomalies, temp_anomaly)    
+  
+}
+
+}
+temp_year_anomalies <- stack(unlist(temp_year_anomalies))
+
+# get the year anomalies in a matrix and save as csv 
+temp_year_anomalies_vals <- get_raster_vals(stack(temp_year_anomalies))
+write.csv(temp_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_year_anomalies.csv", quote=FALSE, row.names=FALSE)
+
+
 # plot monthly anomalies -------------------------------------------------
-names(temp_monthly_anomalies[[3]]) <- paste0("Y", 2003:2015)
-spplot(temp_monthly_anomalies[[3]], bty='n',xaxt='n', yaxt='n', box=FALSE)
-spSA = list("sp.polygons", sa)
-spplot(temp_monthly_anomalies[[3]], bty='n', xaxt='n', yaxt='n', box=FALSE, sp.layout=spSA)
+# names(temp_monthly_anomalies) <- paste0("Y", 2003:2015)
+# spplot(temp_monthly_anomalies[[3]], bty='n',xaxt='n', yaxt='n', box=FALSE)
+# spSA = list("sp.polygons", sa)
+# spplot(temp_monthly_anomalies[[3]], bty='n', xaxt='n', yaxt='n', box=FALSE, sp.layout=spSA)
 
 
-plot(temp_monthly_anomalies[[3]][[5]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(temp_monthly_anomalies[[3]][[5]]), xmax(temp_monthly_anomalies[[3]][[5]])),ylim=c(ymin(temp_monthly_anomalies[[3]][[5]]), ymax(temp_monthly_anomalies[[3]][[5]])),
+plot(temp_monthly_anomalies[[15]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(temp_monthly_anomalies[[15]]), xmax(temp_monthly_anomalies[[15]])),ylim=c(ymin(temp_monthly_anomalies[[15]]), ymax(temp_monthly_anomalies[[15]])),
      cex.axis=1, cex.lab=1.5, legend=FALSE, axes=F, box=F) 
 plot(sa, add=T,lty=1,lwd=0.5)
 #axis(side=1,pos=ymin(precip_anomaly[[8]]),at=seq(xmin(precip_anomaly[[8]]),xmax(precip_anomaly[[8]]),10), cex.axis=1.25)
@@ -135,7 +171,7 @@ plot(sa, add=T,lty=1,lwd=0.5)
 #title(ylab="Latitude", cex.lab=1.25, line=2.5)
 #color.bar(igbpcol_real,1,17)
 #legend("right", inset=c(-0.4,-0.4), legend="Land Cover Class")
-plot(temp_monthly_anomalies[[3]][[5]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("Temperature Standardized Anomalies", side=4, line=2.9, cex=1.25))
+plot(temp_monthly_anomalies[[15]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("Temperature Standardized Anomalies", side=4, line=2.9, cex=1.25))
 
 # plot seasonal anomalies -------------------------------------------------
 names(temp_seas_anomalies[[3]]) <- paste0("Y", 2003:2015)
@@ -144,9 +180,9 @@ spSA = list("sp.polygons", sa)
 spplot(temp_seas_anomalies[[3]], bty='n', xaxt='n', yaxt='n', box=FALSE, sp.layout=spSA)
 
 
-plot(temp_seas_anomalies[[3]][[5]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(temp_seas_anomalies[[3]][[5]]), xmax(temp_seas_anomalies[[3]][[5]])),ylim=c(ymin(temp_seas_anomalies[[3]][[5]]), ymax(temp_seas_anomalies[[3]][[5]])),
+plot(temp_seas_anomalies[[5]],col=rev(brewer.pal(6, "RdBu")), xlim=c(xmin(temp_seas_anomalies[[5]]), xmax(temp_seas_anomalies)),ylim=c(ymin(temp_seas_anomalies[[5]]), ymax(temp_seas_anomalies[[5]])),
      cex.axis=1, cex.lab=1.5, legend=FALSE, axes=F, box=F) 
 plot(sa, add=T,lty=1,lwd=0.5)
-plot(temp_seas_anomalies[[3]][[5]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("Temperature Standardized Anomalies", side=4, line=2.9, cex=1.25))
+plot(temp_seas_anomalies[[5]], col=rev(brewer.pal(6, "RdBu")),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("Temperature Standardized Anomalies", side=4, line=2.9, cex=1.25))
 
 

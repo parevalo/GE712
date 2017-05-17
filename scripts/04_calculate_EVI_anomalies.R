@@ -51,16 +51,21 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 
 # read in pastureland extent data --------------------------
-pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture_2000_sub.tif")
-pasture_2000_sub[pasture_2000_sub<0.6] <- NA
+pasture_2000_sub <- raster("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif")
+pasture_points <- readOGR("/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/", "pasture2000_GT_06_SA_pts_025_select")
 
 
 # read in EVI data --------------------------
-EVI <- brick("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/filtered_EVI_resample_0.5.tif") # read in the red SDS as a raster
-EVI_sub_unstack <- unstack(EVI) # unstack the raster brick into raster layers
-EVI_vals <- values(EVI_time_sub)
+EVI <- brick("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/filtered_EVI_resample_05.tif") # read in the red SDS as a raster
+EVI_sa_sub <- mask(EVI, sa) # limit to extent of South America shape file
+EVI_sub <- mask(EVI_sa_sub, pasture_2000_sub, maskvalue=NA,  updatevalue=NA) # limit to extent of rangeland extent file
+
+EVI_sub_unstack <- unstack(EVI_sub) # unstack the raster brick into raster layers
+EVI_vals <- values(EVI_sub)
 
 # calculate monthly EVI anomalies --------------------------------
+month_list <- list()
+year_list <- list()
 
 # calculate the anomalies for each month (e.g., subtract January EVI from mean January EVI for 14 year time span)
 for (t in 1:13){
@@ -68,22 +73,19 @@ for (t in 1:13){
     # calculate the mean EVI of each month over the whole 14 year period (excluding each time the month of interest)
     EVI_month_mean <- calc(dropLayer(stack(EVI_sub_unstack[m_year==m]), t),mean, na.rm=T)
     EVI_month_sd <- calc(dropLayer(stack(EVI_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
+    EVI_month_year <- stack(EVI_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
-    EVI_anomaly <- (stack(EVI_sub_unstack[m_year==m]) - EVI_month_mean)/EVI_month_sd
-    
-    if(m==1){
-      EVI_monthly_anomalies <- EVI_anomaly
-      
-    }else{
-      EVI_monthly_anomalies  <- append(EVI_monthly_anomalies, EVI_anomaly)    
-      
-    }
+    EVI_anomaly <- (EVI_month_year - EVI_month_mean)/EVI_month_sd
+    month_list[[m]] <- EVI_anomaly
     
   }
-  
+  year_list[[t]] <- month_list
 }
 
+EVI_monthly_anomalies <- stack(unlist(year_list, recursive = T))
+# points_extract <- extract(EVI_monthly_anomalies, pasture_points, sp=T)
+# points_extract@data
 
 # get the anomalies in a matrix and save as csv 
 EVI_monthly_anomalies_vals <- get_raster_vals(stack(EVI_monthly_anomalies))
@@ -112,9 +114,42 @@ for (t in 1:13){
   
 }
 
+EVI_seas_anomalies <- stack(unlist(EVI_seas_anomalies))
+# points_seas <- extract(EVI_seas_anomalies, pasture_points, sp=T)
+# points_seas@data
+
 # get the seasonal anomalies in a matrix and save as csv 
 EVI_seas_anomalies_vals <- get_raster_vals(stack(EVI_seas_anomalies))
 write.csv(EVI_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
+
+
+# calculate yearly anomalies -------------------------------------------------
+EVI_year <- stackApply(EVI_sub, year, fun=mean, na.rm=T)
+for (t in 1:13){
+  EVI_year_mean <-calc(dropLayer(stack(EVI_sub_unstack), which(year==t, arr.ind=TRUE)),mean, na.rm=T)
+  EVI_year_sd <-calc(dropLayer(stack(EVI_sub_unstack), which(year==t, arr.ind=TRUE)),sd, na.rm=T)
+  EVI_year_t <- EVI_year[[t]]
+  
+  # calculate the anomaly 
+  EVI_anomaly <- (EVI_year_t - EVI_year_mean)/EVI_year_sd
+  
+  if(t==1){
+    EVI_year_anomalies <- EVI_anomaly
+    
+  }else{
+    EVI_year_anomalies  <- append(EVI_year_anomalies, EVI_anomaly)    
+    
+  }
+  
+}
+EVI_year_anomalies <- stack(unlist(EVI_year_anomalies))
+
+# get the year anomalies in a matrix and save as csv 
+EVI_year_anomalies_vals <- get_raster_vals(stack(EVI_year_anomalies))
+write.csv(EVI_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_year_anomalies.csv", quote=FALSE, row.names=FALSE)
+
+
+
 
 # plot monthly anomalies -------------------------------------------------
 names(EVI_monthly_anomalies[[3]]) <- paste0("Y", 2003:2015)
@@ -123,7 +158,7 @@ spSA = list("sp.polygons", sa)
 spplot(EVI_monthly_anomalies[[3]], bty='n', xaxt='n', yaxt='n', box=FALSE, sp.layout=spSA)
 
 
-plot(EVI_monthly_anomalies[[3]][[5]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(EVI_monthly_anomalies[[3]][[5]]), xmax(EVI_monthly_anomalies[[3]][[5]])),ylim=c(ymin(EVI_monthly_anomalies[[3]][[5]]), ymax(EVI_monthly_anomalies[[3]][[5]])),
+plot(EVI_monthly_anomalies[[15]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(EVI_monthly_anomalies[[15]]), xmax(EVI_monthly_anomalies[[15]])),ylim=c(ymin(EVI_monthly_anomalies[[15]]), ymax(EVI_monthly_anomalies[[15]])),
      cex.axis=1, cex.lab=1.5, legend=FALSE, axes=F, box=F) 
 plot(sa, add=T,lty=1,lwd=0.5)
 #axis(side=1,pos=ymin(precip_anomaly[[8]]),at=seq(xmin(precip_anomaly[[8]]),xmax(precip_anomaly[[8]]),10), cex.axis=1.25)
@@ -132,7 +167,7 @@ plot(sa, add=T,lty=1,lwd=0.5)
 #title(ylab="Latitude", cex.lab=1.25, line=2.5)
 #color.bar(igbpcol_real,1,17)
 #legend("right", inset=c(-0.4,-0.4), legend="Land Cover Class")
-plot(EVI_monthly_anomalies[[3]][[5]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("EVI Standardized Anomalies", side=4, line=2.9, cex=1.25))
+plot(EVI_monthly_anomalies[[15]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("EVI Standardized Anomalies", side=4, line=2.9, cex=1.25))
 
 # plot seasonal anomalies -------------------------------------------------
 names(EVI_seas_anomalies[[3]]) <- paste0("Y", 2003:2015)
@@ -141,8 +176,8 @@ spSA = list("sp.polygons", sa)
 spplot(EVI_seas_anomalies[[3]], bty='n', xaxt='n', yaxt='n', box=FALSE, sp.layout=spSA)
 
 
-plot(EVI_seas_anomalies[[3]][[5]],col=brewer.pal(6, "RdBu"), xlim=c(xmin(EVI_seas_anomalies[[3]][[5]]), xmax(EVI_seas_anomalies[[3]][[5]])),ylim=c(ymin(EVI_seas_anomalies[[3]][[5]]), ymax(EVI_seas_anomalies[[3]][[5]])),
+plot(EVI_seas_anomalies[[5]],col=brewer.pal(6, "RdYlGn"), xlim=c(xmin(EVI_seas_anomalies[[5]]), xmax(EVI_seas_anomalies[[5]])),ylim=c(ymin(EVI_seas_anomalies[[5]]), ymax(EVI_seas_anomalies[[5]])),
      cex.axis=1, cex.lab=1.5, legend=FALSE, axes=F, box=F) 
 plot(sa, add=T,lty=1,lwd=0.5)
-plot(EVI_seas_anomalies[[3]][[5]], col=brewer.pal(6, "RdBu"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("EVI Standardized Anomalies", side=4, line=2.9, cex=1.25))
+plot(EVI_seas_anomalies[[5]], col=brewer.pal(6, "RdYlGn"),legend.only=TRUE, legend.width=1, legend.shrink=1,legend.args=list("EVI Standardized Anomalies", side=4, line=2.9, cex=1.25))
 
