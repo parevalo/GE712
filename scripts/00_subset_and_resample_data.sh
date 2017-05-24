@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Script to preprocess TRMM 3B43, MODIS MCD12C1 and CRU data.
+# Script to preprocess TRMM 3B43, MODIS MCD12C1, CRU data and IIASA
+# thermal regimes
+
 # Tested with GDAL 2.1
 
 # Define bounding box for clipping
@@ -70,16 +72,36 @@ cd /projectnb/modislc/users/rkstan/GE712/data/MOD13C2
 
 if [ ! -f "filtered_EVI_resample_05.tif" -o $overwrite == "Yes" ]; then
     gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
-     -r average -co COMPRESS=PACKBITS -overwrite \
-    filtered_EVI.envi filtered_EVI_resample_05.tif
+     -r bilinear -co COMPRESS=PACKBITS -overwrite \
+    filtered_EVI.envi filtered_EVI_resample_05_bilinear.tif
 fi
 
 # Resample pastures to match the grid
 cd /projectnb/modislc/users/rkstan/GE712/data/pasture_extent 
 
-if [ ! -f "pasture2000_resample_05.tif" -o $overwrite == "Yes" ]; then
+if [ ! -f "pasture2000_GT_06_resample_05.tif" -o $overwrite == "Yes" ]; then
     gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
      -r average -co COMPRESS=PACKBITS -overwrite \
    pasture2000_GT_06.tif pasture2000_GT_06_resample_05.tif
+fi
+
+# Thermal regimes from IIASA v3
+cd /projectnb/modislc/users/rkstan/GE712/data/thermal_regions_IIASA_v3
+
+if [ ! -f "thermal_regimes_resample_05.tif" -o $overwrite == "Yes" ]; then
+    gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
+     -co COMPRESS=PACKBITS -overwrite \
+      data.asc thermal_regimes_resample_05.tif
+fi
+
+# Mask thermal regimes using resampled pasture
+
+pastureraster=/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif
+
+if [ ! -f "thermal_regimes_resample_05_pastures.tif" -o $overwrite == "Yes" ]; then
+    gdal_calc.py -A $pastureraster -B thermal_regimes_resample_05.tif \
+     --type=Byte --co="COMPRESS=PACKBITS" --overwrite \
+      --outfile="thermal_regimes_resample_05_pastures.tif" \
+       --calc="logical_and(A >0 , B >= 1)*B" 
 fi
 
