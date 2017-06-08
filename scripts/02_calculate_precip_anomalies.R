@@ -40,7 +40,7 @@ get_raster_vals <- function(data){
 # assign in variables ------------------------
 year <- rep(1:13, each=12)
 m_year <- rep(1:12, 13)
-seasons <- rep(c(1,1,2,2,2,3,3,3,4,4,4,1), 13)
+seasons <- rep(rep(1:4, each=3),13)
 index <- rep(1:13, each=3)
 
 # read in South America boundary 
@@ -78,13 +78,15 @@ Getprecip <- function(TRMM_file_path, as.int=T){
 # get precpitation
 precip_list <- parLapply(cl, TRMM_tile_files, Getprecip)
 precip_stack <- stack(unlist(precip_list)) # unlist and convert to a single RasterStack
-precip_time_sub <- precip_stack[[37:192]] # subset only desired time period 2003-2016
+precip_time_sub <- precip_stack[[36:192]] # subset only desired time period 2003-2016
 
 precip_sa_sub <- mask(precip_time_sub, sa) # limit to extent of South America shape file
 precip_sub <- mask(precip_sa_sub, pasture_2000_sub,maskvalue=NA,  updatevalue=NA) # limit to extent of rangeland extent file
-precip_sub_unstack <- unstack(precip_sub) # unstack the raster brick into raster layers
+precip_sub_unstack <- unstack(dropLayer(precip_sub,157)) # unstack the raster brick into raster layers
 
 precip <- values(precip_sub)
+
+pp <- c(apply(precip,2,rbind))
 
 # calculate monthly precipitation anomalies --------------------------------
 month_list <- list()
@@ -95,6 +97,7 @@ for (t in 1:13){
   for (m in 1:12){
 
     # calculate the mean precipitation of each month over the whole 14 year period (excluding each time the month of interest)
+    # NOTE that all 1s are Decembers from 2002 to 2015
     precip_month_mean <- calc(dropLayer(stack(precip_sub_unstack[m_year==m]), t),mean, na.rm=T)
     precip_month_sd <- calc(dropLayer(stack(precip_sub_unstack[m_year==m]), t),sd, na.rm=T) # calculate the standard deviation 
     precip_month_year <- stack(precip_sub_unstack[m_year==m])[[t]]
@@ -124,66 +127,81 @@ precip_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 
 # get the anomalies in a matrix and save as csv 
 precip_monthly_anomalies_vals <- get_raster_vals(stack(precip_monthly_anomalies))
+colnames(precip_monthly_anomalies_vals) <- rep(c("December", "January", "February", "March", "April", 
+                                               "May", "June", "July", "August", "September", "October", "November"), 13)
 write.csv(precip_monthly_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies.csv", quote=FALSE, row.names=FALSE)
 
-pp <- c(apply(precip_monthly_anomalies_vals,2,rbind))
+#monthly lagged values 
+precip_monthly_anomalies_lag1 <- precip_monthly_anomalies_vals[,-156]
+write.csv(precip_monthly_anomalies_lag1, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies_lag1.csv", quote=FALSE, row.names=FALSE)
 
+precip_monthly_anomalies_lag2 <- precip_monthly_anomalies_vals[,-c(155,156)]
+write.csv(precip_monthly_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies_lag2.csv", quote=FALSE, row.names=FALSE)
+
+precip_monthly_anomalies_lag3 <- precip_monthly_anomalies_vals[,-c(154,155,156)]
+write.csv(precip_monthly_anomalies_lag3, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies_lag3.csv", quote=FALSE, row.names=FALSE)
+
+precip_monthly_anomalies_lag4 <- precip_monthly_anomalies_vals[,-c(153,154,155,156)]
+write.csv(precip_monthly_anomalies_lag4, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies_lag4.csv", quote=FALSE, row.names=FALSE)
 
 # calculate seasonal precipitation anomalies --------------------------------
+seas_list <- list()
+seas_all <- list()
+
 for (t in 1:13){
   for (m in 1:4){
     # calculate the mean precipitation of each month over the whole 14 year period (excluding each time the month of interest)
     precip_seas_mean <-calc(dropLayer(stack(precip_sub_unstack[seasons==m]), which(index==t, arr.ind=TRUE)),mean, na.rm=T)
     precip_seas_sd <- calc(dropLayer(stack(precip_sub_unstack[seasons==m]), which(index==t, arr.ind=TRUE)),sd, na.rm=T) # calculate the standard deviation 
-    precip_mean <- stackApply(stack(precip_sub_unstack[seasons==m]), index, mean, na.rm=T)
+    precip_mean <- stackApply(stack(precip_sub_unstack[seasons==m]), index, mean, na.rm=T)[[t]]
     
     # calculate the anomaly 
     precip_anomaly <- (precip_mean - precip_seas_mean)/precip_seas_sd
-    
-    if(m==1){
-      precip_seas_anomalies <-precip_anomaly
-      
-    }else{
-      precip_seas_anomalies  <- append(precip_seas_anomalies, precip_anomaly)    
-      
-    }
+    seas_list[[m]] <- precip_anomaly
     
   }
-  
+  seas_all[[t]] <- seas_list
 }
 
-precip_seas_anomalies <- stack(unlist(precip_seas_anomalies))
+precip_seas_anomalies <- stack(unlist(seas_all, recursive = T))
 # points_seas <- extract(precip_seas_anomalies, pasture_points, sp=T)
 # points_seas@data
 
 # get the seasonal anomalies in a matrix and save as csv 
 precip_seas_anomalies_vals <- get_raster_vals(stack(precip_seas_anomalies))
+colnames(precip_seas_anomalies_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 write.csv(precip_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
+
+#lagged seasonal values 
+precip_seas_anomalies_lag1 <- precip_seas_anomalies_vals[,-52]
+write.csv(precip_seas_anomalies_lag1, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies_lag1.csv", quote=FALSE, row.names=FALSE)
+
+precip_seas_anomalies_lag2 <- precip_seas_anomalies_vals[,-c(51,52)]
+write.csv(precip_seas_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies_lag2.csv", quote=FALSE, row.names=FALSE)
 
 
 # calculate yearly anomalies -------------------------------------------------
-precip_year <- stackApply(precip_sub, year, fun=mean, na.rm=T)
+year_anom <- list()
+precip_sub_year <- dropLayer(precip_sub, 1)
+precip_year <- stackApply(precip_sub_year, year, fun=mean, na.rm=T)
+
 for (t in 1:13){
-  precip_year_mean <-calc(dropLayer(stack(precip_sub_unstack), which(year==t, arr.ind=TRUE)),mean, na.rm=T)
-  precip_year_sd <-calc(dropLayer(stack(precip_sub_unstack), which(year==t, arr.ind=TRUE)),sd, na.rm=T)
+  precip_year_mean <-calc(dropLayer(precip_sub_year, which(year==t, arr.ind=TRUE)),mean, na.rm=T)
+  precip_year_sd <-calc(dropLayer(precip_sub_year, which(year==t, arr.ind=TRUE)),sd, na.rm=T)
   precip_year_t <- precip_year[[t]]
   
   # calculate the anomaly 
   precip_anomaly <- (precip_year_t - precip_year_mean)/precip_year_sd
-  
-  if(t==1){
-    precip_year_anomalies <- precip_anomaly
-    
-  }else{
-    precip_year_anomalies  <- append(precip_year_anomalies, precip_anomaly)    
-    
-  }
+  year_anom[[t]] <- precip_anomaly
   
 }
-precip_year_anomalies <- stack(unlist(precip_year_anomalies))
+
+precip_year_anomalies <- stack(unlist(year_anom, recursive = T))
 
 # get the year anomalies in a matrix and save as csv 
 precip_year_anomalies_vals <- get_raster_vals(stack(precip_year_anomalies))
+colnames(precip_year_anomalies_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+                                        "2013", "2014", "2015")
 write.csv(precip_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_year_anomalies.csv", quote=FALSE, row.names=FALSE)
 
 

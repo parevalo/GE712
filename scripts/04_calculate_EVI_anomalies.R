@@ -40,7 +40,7 @@ get_raster_vals <- function(data){
 # assign in variables ------------------------
 year <- rep(1:13, each=12)
 m_year <- rep(1:12, 13)
-seasons <- rep(c(1,1,2,2,2,3,3,3,4,4,4,1), 13)
+seasons <- rep(rep(1:4, each=3),13)
 index <- rep(1:13, each=3)
 
 # read in South America boundary 
@@ -60,8 +60,10 @@ EVI <- brick("/projectnb/modislc/users/rkstan/GE712/data/MOD13C2/filtered_EVI_re
 EVI_sa_sub <- mask(EVI, sa) # limit to extent of South America shape file
 EVI_sub <- mask(EVI_sa_sub, pasture_2000_sub, maskvalue=NA,  updatevalue=NA) # limit to extent of rangeland extent file
 
-EVI_sub_unstack <- unstack(EVI_sub) # unstack the raster brick into raster layers
+EVI_sub_unstack <- unstack(dropLayer(EVI_sub,157)) # unstack the raster brick into raster layers
+
 EVI_vals <- values(EVI_sub)
+evi_pp <- c(apply(EVI_vals,2,rbind))
 
 # calculate monthly EVI anomalies --------------------------------
 month_list <- list()
@@ -84,68 +86,81 @@ for (t in 1:13){
 }
 
 EVI_monthly_anomalies <- stack(unlist(year_list, recursive = T))
-# points_extract <- extract(EVI_monthly_anomalies, pasture_points, sp=T)
-# points_extract@data
 
 # get the anomalies in a matrix and save as csv 
 EVI_monthly_anomalies_vals <- get_raster_vals(stack(EVI_monthly_anomalies))
+colnames(EVI_monthly_anomalies_vals) <- rep(c("December", "January", "February", "March", "April", 
+                                              "May", "June", "July", "August", "September", "October", "November"), 13)
 write.csv(EVI_monthly_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies.csv", quote=FALSE, row.names=FALSE)
 
+#monthly lagged values 
+EVI_monthly_anomalies_lag1 <- EVI_monthly_anomalies_vals[,-1]
+write.csv(EVI_monthly_anomalies_lag1, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies_lag1.csv", quote=FALSE, row.names=FALSE)
+
+EVI_monthly_anomalies_lag2 <- EVI_monthly_anomalies_vals[,-c(1,2)]
+write.csv(EVI_monthly_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies_lag2.csv", quote=FALSE, row.names=FALSE)
+
+EVI_monthly_anomalies_lag3 <- EVI_monthly_anomalies_vals[,-c(1,2,3)]
+write.csv(EVI_monthly_anomalies_lag3, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies_lag3.csv", quote=FALSE, row.names=FALSE)
+
+EVI_monthly_anomalies_lag4 <- EVI_monthly_anomalies_vals[,-c(1,2,3,4)]
+write.csv(EVI_monthly_anomalies_lag4, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies_lag4.csv", quote=FALSE, row.names=FALSE)
+
+
 # calculate seasonal EVI anomalies --------------------------------
+seas_list <- list()
+seas_all <- list()
+
 for (t in 1:13){
   for (m in 1:4){
     # calculate the mean EVI of each month over the whole 14 year period (excluding each time the month of interest)
     EVI_seas_mean <-calc(dropLayer(stack(EVI_sub_unstack[seasons==m]), which(index==t, arr.ind=TRUE)),mean, na.rm=T)
     EVI_seas_sd <- calc(dropLayer(stack(EVI_sub_unstack[seasons==m]), which(index==t, arr.ind=TRUE)),sd, na.rm=T) # calculate the standard deviation 
-    EVI_mean <- stackApply(stack(EVI_sub_unstack[seasons==m]), index, mean, na.rm=T)
+    EVI_mean <- stackApply(stack(EVI_sub_unstack[seasons==m]), index, mean, na.rm=T)[[t]]
     
     # calculate the anomaly 
     EVI_anomaly <- (EVI_mean - EVI_seas_mean)/EVI_seas_sd
-    
-    if(m==1){
-      EVI_seas_anomalies <- EVI_anomaly
-      
-    }else{
-      EVI_seas_anomalies  <- append(EVI_seas_anomalies, EVI_anomaly)    
-      
-    }
+    seas_list[[m]] <- EVI_anomaly
     
   }
-  
+  seas_all[[t]] <- seas_list
 }
 
-EVI_seas_anomalies <- stack(unlist(EVI_seas_anomalies))
-# points_seas <- extract(EVI_seas_anomalies, pasture_points, sp=T)
-# points_seas@data
+EVI_seas_anomalies <- stack(unlist(seas_all, recursive = T))
 
 # get the seasonal anomalies in a matrix and save as csv 
 EVI_seas_anomalies_vals <- get_raster_vals(stack(EVI_seas_anomalies))
+colnames(EVI_seas_anomalies_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 write.csv(EVI_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
+
+#lagged seasonal values 
+EVI_seas_anomalies_lag1 <- EVI_seas_anomalies_vals[,-1]
+write.csv(EVI_seas_anomalies_lag1, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_seas_anomalies_lag1.csv", quote=FALSE, row.names=FALSE)
+
+EVI_seas_anomalies_lag2 <- EVI_seas_anomalies_vals[,-c(1,2)]
+write.csv(EVI_seas_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_seas_anomalies_lag2.csv", quote=FALSE, row.names=FALSE)
 
 
 # calculate yearly anomalies -------------------------------------------------
-EVI_year <- stackApply(EVI_sub, year, fun=mean, na.rm=T)
+year_anom <- list()
+EVI_sub_year <- dropLayer(EVI_sub, 1)
+
+EVI_year <- stackApply(EVI_sub_year, year, fun=mean, na.rm=T)
 for (t in 1:13){
-  EVI_year_mean <-calc(dropLayer(stack(EVI_sub_unstack), which(year==t, arr.ind=TRUE)),mean, na.rm=T)
-  EVI_year_sd <-calc(dropLayer(stack(EVI_sub_unstack), which(year==t, arr.ind=TRUE)),sd, na.rm=T)
+  EVI_year_mean <-calc(dropLayer(EVI_sub_year, which(year==t, arr.ind=TRUE)),mean, na.rm=T)
+  EVI_year_sd <-calc(dropLayer(EVI_sub_year, which(year==t, arr.ind=TRUE)),sd, na.rm=T)
   EVI_year_t <- EVI_year[[t]]
   
   # calculate the anomaly 
   EVI_anomaly <- (EVI_year_t - EVI_year_mean)/EVI_year_sd
-  
-  if(t==1){
-    EVI_year_anomalies <- EVI_anomaly
-    
-  }else{
-    EVI_year_anomalies  <- append(EVI_year_anomalies, EVI_anomaly)    
-    
-  }
-  
+  year_anom[[t]] <- EVI_anomaly
 }
-EVI_year_anomalies <- stack(unlist(EVI_year_anomalies))
+EVI_year_anomalies <- stack(unlist(year_anom, recursive = T))
 
 # get the year anomalies in a matrix and save as csv 
 EVI_year_anomalies_vals <- get_raster_vals(stack(EVI_year_anomalies))
+colnames(EVI_year_anomalies_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+                                        "2013", "2014", "2015")
 write.csv(EVI_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_year_anomalies.csv", quote=FALSE, row.names=FALSE)
 
 

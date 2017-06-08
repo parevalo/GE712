@@ -6,13 +6,14 @@ library(tidyverse)
 setwd("/home/paulo/GE712/outputs")
 
 # Read monthly and seasonal anomalies
-precip_monthly_anomalies <- read.csv(file="/home/paulo/GE712/outputs/precip_monthly_anomalies.csv")
-temp_monthly_anomalies <- read.csv(file="/home/paulo/GE712/outputs/temp_monthly_anomalies.csv")
-EVI_monthly_anomalies <- read.csv(file="/home/paulo/GE712/outputs/EVI_monthly_anomalies.csv")
+#precip_monthly_anomalies <- read.csv(file="/home/paulo/GE712/outputs/precip_monthly_anomalies.csv")
+precip_monthly_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies.csv")
+temp_monthly_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_monthly_anomalies.csv")
+EVI_monthly_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_monthly_anomalies.csv")
 
-precip_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/precip_seas_anomalies.csv")
-temp_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/temp_seas_anomalies.csv")
-EVI_seas_anomalies <- read.csv(file="/home/paulo/GE712/outputs/EVI_seas_anomalies.csv")
+precip_seas_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies.csv")
+temp_seas_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_seas_anomalies.csv")
+EVI_seas_anomalies <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/EVI_seas_anomalies.csv")
 
 # Merge and remove rows with at least one NA
 total_monthly <- cbind(EVI_monthly_anomalies, precip_monthly_anomalies, temp_monthly_anomalies)
