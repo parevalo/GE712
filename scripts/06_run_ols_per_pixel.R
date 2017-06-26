@@ -1,8 +1,13 @@
 library(raster)
 library(rgdal)
 library(RColorBrewer)
+library(maptools)
 
 setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
+data(wrld_simpl)
+SA = c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana", "Paraguay", "Peru",
+       "Suriname", "Uruguay", "Venezuela")
+sa = wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 # Read in stacks of evi, precip and temp, 13 layers each
 djf_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_raster.envi")
@@ -30,6 +35,12 @@ djf = prep_stacks(djf_raster)
 mam = prep_stacks(mam_raster)
 jja = prep_stacks(jja_raster)
 son = prep_stacks(son_raster)
+
+#Plot
+
+plot(djf[[14:26]])
+dev.new()
+plot(mam[[14:26]])
 
 
 # Define functions to obtain each of the coefficients from the regression
@@ -85,16 +96,82 @@ mam_coefs = calc_coefs(mam)
 jja_coefs = calc_coefs(jja)
 son_coefs = calc_coefs(son)
 
+#Function to save a single figure with the coefficients/optimum with all the four seasons
+save_maps = function(djf_list, mam_list, jja_list, son_list, index, fname){
+  png(fname, width=1000, height = 1000)
+  par(mfrow=c(2,2), mar=c(3,3,3,3))
+  plot(djf_list[[index]], col=brewer.pal(6, "RdBu"), legend=F, main="DJF")
+  plot(sa, add=T, lty=1, lwd=0.5)
+  plot(djf_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
+  
+  plot(mam_list[[index]], col=brewer.pal(6, "RdBu"), legend=F, , main="MAM")
+  plot(sa, add=T, lty=1, lwd=0.5)
+  plot(mam_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
+  
+  plot(jja_list[[index]], col=brewer.pal(6, "RdBu"), legend=F, , main="JJA")
+  plot(sa, add=T, lty=1, lwd=0.5)
+  plot(jja_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
+  
+  plot(son_list[[index]],col=brewer.pal(6, "RdBu"), legend=F, , main="SON")
+  plot(sa, add=T, lty=1, lwd=0.5)
+  plot(son_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
+  dev.off()
+}
+
+
+# Save for comparison
+save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 2, "precip_all.png")
+save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 3, "temp_all.png")
+save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 4, "precip2_all.png")
+save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 5, "temp2_all.png")
+
+# Filter them by significance
+filter_coefs = function(season_coefs){
+  # Create masks with threshold for significance
+  filter_signif = function(x){ x[x > 0.05] = NA; return(x)}
+  filter_outliers = function(x){ x[x>20 | x < (-20)] <- NA; return(x)}
+  precip_mask = calc(season_coefs[[7]], filter_signif)
+  temp_mask = calc(season_coefs[[8]], filter_signif)
+  precip2_mask = calc(season_coefs[[9]], filter_signif)
+  temp2_mask = calc(season_coefs[[10]], filter_signif)
+  
+  # Filter actual coefficients using the masks we created
+  precip_masked = mask(season_coefs[[2]], precip_mask)
+  temp_masked = mask(season_coefs[[3]], precip2_mask)
+  precip2_masked = mask(season_coefs[[4]], temp_mask)
+  temp2_masked = mask(season_coefs[[5]], temp2_mask)
+  
+  # Filter outliers
+  precip_masked = calc(precip_masked, filter_outliers)
+  precip2_masked = calc(precip2_masked, filter_outliers)
+  
+  return(list(precip_masked, precip2_masked, temp_masked, temp2_masked))
+}
+
+# filter coefs
+djf_filtered = filter_coefs(djf_coefs)
+mam_filtered = filter_coefs(mam_coefs)
+jja_filtered = filter_coefs(jja_coefs)
+son_filtered = filter_coefs(son_coefs)
+
+
+# Save those plots!
+save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 1, "precip_signif005.png")
+save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 2, "precip2_signif005.png")
+save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 3, "temp_signif005.png")
+save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 4, "temp2_signif005.png")
+
+
 # Fnc to calculate optimum values
 calculate_optimum = function(season_coefs){
   # Create masks with threshold for significance
-  filter_signif = function(x){ x[x > 0.1] = NA; return(x)}
+  filter_signif = function(x){ x[x > 0.05] = NA; return(x)}
   precip_mask = calc(season_coefs[[15]], filter_signif)
   precip2_mask = calc(season_coefs[[16]], filter_signif)
   temp_mask = calc(season_coefs[[17]], filter_signif)
   temp2_mask = calc(season_coefs[[18]], filter_signif)
   
-  # Filter actualy coefficients using the masks we created
+  # Filter actual coefficients using the masks we created
   precip_masked = mask(season_coefs[[11]], precip_mask)
   precip2_masked = mask(season_coefs[[12]], precip2_mask)
   temp_masked = mask(season_coefs[[13]], temp_mask)
@@ -107,7 +184,16 @@ calculate_optimum = function(season_coefs){
   optimum[[3]] = 2*precip2_masked # 2nd derivative precip
   optimum[[4]] = (-1 * precip_masked) / optimum[[3]] # precip optimum, -1 required to avoid error
   
-  return(optimum)
+  # Create masks where second derivative is negative (local maximum)
+  filter_optimum = function(x){ x[x >= 0] = NA; return(x)}
+  optimum_temp_mask = calc(optimum[[1]],filter_optimum)
+  optimum_precip_mask = calc(optimum[[3]],filter_optimum)
+  
+  # Filter optimum valuesusing those masks
+  optimum_temp = mask(optimum[[2]], optimum_temp_mask)
+  optimum_precip = mask(optimum[[4]], optimum_precip_mask)
+  
+  return(list(optimum_temp, optimum_precip))
 }
 
 
@@ -116,6 +202,11 @@ djf_optimum = calculate_optimum(djf_coefs)
 mam_optimum = calculate_optimum(mam_coefs)
 jja_optimum = calculate_optimum(jja_coefs)
 son_optimum = calculate_optimum(son_coefs)
+
+# Plot optimum temp
+save_maps(djf_optimum, mam_optimum, jja_optimum, son_optimum, 1, "filtered_optimum_temp_005.png")
+save_maps(djf_optimum, mam_optimum, jja_optimum, son_optimum, 2, "filtered_optimum_precip_005.png")
+
 
 
 ## CALCULATE AND MAP ECOLOGICAL OPTIMUM
