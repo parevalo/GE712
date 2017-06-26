@@ -32,6 +32,9 @@ jja = prep_stacks(jja_raster)
 son = prep_stacks(son_raster)
 
 
+
+
+
 # Define functions to obtain each of the coefficients from the regression
 
 # 1 to 6: Get intercepts and slopes from evi ~ precip + temp + precip^2 + temp^2. Get r squares too.
