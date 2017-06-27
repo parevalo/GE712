@@ -21,36 +21,35 @@ temp <- read.csv(file=sprintf("/projectnb/modislc/users/rkstan/GE712/outputs/tem
 evi <- read.csv(file=sprintf("/projectnb/modislc/users/rkstan/GE712/outputs/EVI_%s_%s.csv", args$time, args$type))
 thermal_regions <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/thermal_regions_vals.csv")
 
-
 # Merge and remove rows with at least one NA
 total <- cbind(evi, precip, temp, thermal_regions)
 total_filtered = na.omit(total)
 
 # Get season indices
-djf_index = grep("DJF", colnames(total))
-mam_index = grep("MAM", colnames(total))
-jja_index = grep("JJA", colnames(total))
-son_index = grep("SON", colnames(total))
+djf_index = grep("DJF", colnames(total_filtered))
+mam_index = grep("MAM", colnames(total_filtered))
+jja_index = grep("JJA", colnames(total_filtered))
+son_index = grep("SON", colnames(total_filtered))
 
 # Subset the seasons!
-djf = as.matrix(total[,djf_index])
-mam = as.matrix(total[,mam_index])
-jja = as.matrix(total[,jja_index])
-son = as.matrix(total[,son_index])
+djf = as.matrix(total_filtered[,djf_index])
+mam = as.matrix(total_filtered[,mam_index])
+jja = as.matrix(total_filtered[,jja_index])
+son = as.matrix(total_filtered[,son_index])
 
 # write out raster files 
 seas_raster <- brick(nrows=138, ncols=94, nl=39, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
                   xmn=-81.5, xmx=-34.5, ymn=-56.5, ymx=12.5)
-djf_raster <- setValues(seas_raster, djf)
-mam_raster <- setValues(seas_raster, mam)
-jja_raster <- setValues(seas_raster, jja)
-son_raster <- setValues(seas_raster, son)
 
 setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
-writeRaster(djf_raster, file="djf_raster.hdr", format="ENVI", overwrite=TRUE)
-writeRaster(mam_raster, file="mam_raster.hdr", format="ENVI", overwrite=TRUE)
-writeRaster(jja_raster, file="jja_raster.hdr", format="ENVI", overwrite=TRUE)
-writeRaster(son_raster, file="son_raster.hdr", format="ENVI", overwrite=TRUE)
+seas_raster[as.numeric(rownames(djf))] <- djf
+writeRaster(seas_raster, file="djf_raster.hdr", format="ENVI", overwrite=TRUE)
+seas_raster[as.numeric(rownames(mam))] <- mam
+writeRaster(seas_raster, file="mam_raster.hdr", format="ENVI", overwrite=TRUE)
+seas_raster[as.numeric(rownames(jja))] <- jja
+writeRaster(seas_raster, file="jja_raster.hdr", format="ENVI", overwrite=TRUE)
+seas_raster[as.numeric(rownames(son))] <- son
+writeRaster(seas_raster, file="son_raster.hdr", format="ENVI", overwrite=TRUE)
 
 # Split variables back into separate df's
 total_EVI <- as.data.frame(total_filtered[,1:52])
