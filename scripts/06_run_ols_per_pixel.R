@@ -15,89 +15,52 @@ mam_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_raster.en
 jja_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_raster.envi")
 son_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_raster.envi")
 
-## RUN PIXELWISE OLS AND MAP COEFFICIENTS
 
-# Prepare stacks by masking them so that they have the same data/nodata areas
-prep_stacks = function(rast){
-  evi = subset(rast, 1:13)
-  precip = subset(rast, 14:26)
-  temp = subset(rast, 27:39)
+
+get_stat <- function(x, args.list){
+
+  res <- rep(NA, args.list$nl)
+ 
+  if (anyNA(x))
+    return(res)
   
-  # Mask them to have the same areas of data/nodata
-  precip_masked = mask(precip, temp)
-  evi_masked = mask(evi, precip_masked)
-  out_rast = stack(evi_masked, precip_masked, temp)
-  return(out_rast)
+  m1 <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))
+  m2 <- lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2))
+  m3 <- lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2))
 
-}
+  sm1 <- summary(m1)
+  sm2 <- summary(m2)
+  sm3 <- summary(m3)
 
-djf = prep_stacks(djf_raster)
-mam = prep_stacks(mam_raster)
-jja = prep_stacks(jja_raster)
-son = prep_stacks(son_raster)
+  res <- c(intercept          = m1$coefficients[1], # Why the equation is different from the otehrs lm(x[1:13] ~ x[14:26]) ???
+           beta_precip        = m1$coefficients[2], 
+           beta_temp          = m1$coefficients[3],
+           beta_precip2       = m1$coefficients[4],
+           beta_temp2         = m1$coefficients[5],
+           rsquared           = sm1$r.squared, 
+           signif_precip      = sm1[2,4],
+           signif_temp        = sm1[3,4],
+           signif_precip2     = sm1[4,4],
+           signif_temp2       = sm1[4,4], # Why this is the same as signif_precip2
+           beta_precip_opt    = m2[2],
+           beta_precip2_opt   = m2[3],
+           beta_temp_opt      = m3[2],
+           beta_temp2_opt     = m3[3],
+           signif_precip_opt  = sm2[2,4],
+           signif_precip2_opt = sm2[3,4],
+           signif_temp_opt    = sm3[2,4],
+           signif_temp2_opt   = sm3[3,4]
+  )
 
-#Plot
+  return(res)
 
-plot(djf[[14:26]])
-dev.new()
-plot(mam[[14:26]])
-
-
-
-
-
-# Define functions to obtain each of the coefficients from the regression
-
-# 1 to 6: Get intercepts and slopes from evi ~ precip + temp + precip^2 + temp^2. Get r squares too.
-get_intercept=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26])$coefficients[1] }}
-
-get_beta_precip=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))$coefficients[2] }}
-get_beta_temp=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))$coefficients[3] }}
-get_beta_precip2=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))$coefficients[4] }}
-get_beta_temp2=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))$coefficients[5] }}
-
-get_rsquared=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2));summary(m)$r.squared }}
-
-# 7 to 10:Get significance level for each of the coefficients
-get_signif_precip=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2));summary(m)$coefficients[2,4]}}
-get_signif_temp=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2));summary(m)$coefficients[3,4]}}
-get_signif_precip2=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2));summary(m)$coefficients[4,4]}}
-get_signif_temp2=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2));summary(m)$coefficients[4,4]}}
-
-# 11 to 14: Implements functions to calculate the optimum
-get_beta_precip_opt=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2))$coefficients[2] }}
-get_beta_precip2_opt=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2))$coefficients[3] }}
-get_beta_temp_opt=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2))$coefficients[2] }}
-get_beta_temp2_opt=function(x) { if (is.na(x[1])){ NA } else { lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2))$coefficients[3] }}
-
-# 15 to 18: Get significance of those optimum coefficients
-get_signif_precip_opt=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2));summary(m)$coefficients[2,4] }}
-get_signif_precip2_opt=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2));summary(m)$coefficients[3,4] }}
-get_signif_temp_opt=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2));summary(m)$coefficients[2,4] }}
-get_signif_temp2_opt=function(x) { if (is.na(x[1])){ NA } else { m <- lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2));summary(m)$coefficients[3,4] }}
-
-
-# Put all functions on a vector to make it easier to calculate them
-fnc_list = c(get_intercept, get_beta_precip, get_beta_temp, get_beta_precip2, get_beta_temp2, get_rsquared, 
-             get_signif_precip, get_signif_temp, get_signif_precip2, get_signif_temp2, 
-             get_beta_precip_opt,get_beta_precip2_opt, get_beta_temp_opt, get_beta_temp2_opt, 
-             get_signif_precip_opt, get_signif_precip2_opt, get_signif_temp_opt, get_signif_temp2_opt)
-
-
-# Iterate over functions and calculate each of the coefficients per season 
-calc_coefs = function(x){
-  coef_list = list()
-  for(i in 1:length(fnc_list)){
-    coef_list[[i]] = calc(x, fnc_list[[i]])
-  }  
-  return(coef_list)
-}
+}  
 
 # Get ALL coefficients per season
-djf_coefs = calc_coefs(djf)
-mam_coefs = calc_coefs(mam)
-jja_coefs = calc_coefs(jja)
-son_coefs = calc_coefs(son)
+djf_coef <- pply_stack_parallel(x = djf, fun = get_stat, nl = 18)
+mam_coef <- pply_stack_parallel(x = mam, fun = get_stat, nl = 18)
+jja_coef <- pply_stack_parallel(x = jja, fun = get_stat, nl = 18)
+son_coef <- pply_stack_parallel(x = son, fun = get_stat, nl = 18)
 
 #Function to save a single figure with the coefficients/optimum with all the four seasons
 save_maps = function(djf_list, mam_list, jja_list, son_list, index, fname){
