@@ -1,4 +1,11 @@
 library(raster)
+library(maptools)
+
+# read in South America boundary 
+data(wrld_simpl)
+SA <- c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana", 
+        "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela")
+sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 # read in thermal data and output a matrix 
 
@@ -39,7 +46,11 @@ fun3 <- function(x) {x[x==7| x==8 | x==9] <- 3; return(x)}
 thermal_sub_3 <-  calc(thermal_sub_2, fun3)
 fun4 <- function(x) {x[x==10] <- NA; return(x)}
 thermal_sub_4 <-  calc(thermal_sub_3, fun4)
+
+
+# plot the thermal regions! 
 plot(thermal_sub_4, col=c("red", "black", "green"))
+plot(sa, add=T,lty=1,lwd=0.5)
 
 thermal_regions_vals <- get_raster_vals(thermal_sub_4)
 write.csv(thermal_regions_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/thermal_regions_vals.csv", quote=FALSE, row.names=FALSE)
