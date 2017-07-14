@@ -10,10 +10,21 @@ SA = c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana
 sa = wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 # Read in stacks of evi, precip and temp, 13 layers each
-djf_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_raster.envi")
-mam_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_raster.envi")
-jja_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_raster.envi")
-son_raster <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_raster.envi")
+djf_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone1.envi")
+mam_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone1.envi")
+jja_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone1.envi")
+son_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone1.envi")
+
+djf_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone2.envi")
+mam_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone2.envi")
+jja_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone2.envi")
+son_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone2.envi")
+
+djf_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone3.envi")
+mam_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone3.envi")
+jja_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone3.envi")
+son_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone3.envi")
+
 
 ## RUN PIXELWISE OLS AND MAP COEFFICIENTS
 
@@ -31,16 +42,26 @@ prep_stacks = function(rast){
 
 }
 
-djf = prep_stacks(djf_raster)
-mam = prep_stacks(mam_raster)
-jja = prep_stacks(jja_raster)
-son = prep_stacks(son_raster)
+djf_zone1 = prep_stacks(djf_raster_zone1)
+mam_zone1 = prep_stacks(mam_raster_zone1)
+jja_zone1 = prep_stacks(jja_raster_zone1)
+son_zone1 = prep_stacks(son_raster_zone1)
+
+djf_zone2 = prep_stacks(djf_raster_zone2)
+mam_zone2 = prep_stacks(mam_raster_zone2)
+jja_zone2 = prep_stacks(jja_raster_zone2)
+son_zone2 = prep_stacks(son_raster_zone2)
+
+djf_zone3 = prep_stacks(djf_raster_zone3)
+mam_zone3 = prep_stacks(mam_raster_zone3)
+jja_zone3 = prep_stacks(jja_raster_zone3)
+son_zone3 = prep_stacks(son_raster_zone3)
 
 #Plot
 
-plot(djf[[14:26]])
+plot(djf_zone1[[14:26]])
 dev.new()
-plot(mam[[14:26]])
+plot(mam_zone1[[14:26]])
 
 
 
@@ -94,15 +115,28 @@ calc_coefs = function(x){
 }
 
 # Get ALL coefficients per season
-djf_coefs = calc_coefs(djf)
-mam_coefs = calc_coefs(mam)
-jja_coefs = calc_coefs(jja)
-son_coefs = calc_coefs(son)
+djf_coefs_zone1 = calc_coefs(djf_zone1)
+mam_coefs_zone1 = calc_coefs(mam_zone1)
+jja_coefs_zone1 = calc_coefs(jja_zone1)
+son_coefs_zone1 = calc_coefs(son_zone1)
+
+djf_coefs_zone2 = calc_coefs(djf_zone2)
+mam_coefs_zone2 = calc_coefs(mam_zone2)
+jja_coefs_zone2 = calc_coefs(jja_zone2)
+son_coefs_zone2 = calc_coefs(son_zone2)
+
+djf_coefs_zone3 = calc_coefs(djf_zone3)
+mam_coefs_zone3 = calc_coefs(mam_zone3)
+jja_coefs_zone3 = calc_coefs(jja_zone3)
+son_coefs_zone3 = calc_coefs(son_zone3)
 
 #Function to save a single figure with the coefficients/optimum with all the four seasons
 save_maps = function(djf_list, mam_list, jja_list, son_list, index, fname){
+  setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
   png(fname, width=1000, height = 1000)
+  
   par(mfrow=c(2,2), mar=c(3,3,3,3))
+  
   plot(djf_list[[index]], col=brewer.pal(6, "RdBu"), legend=F, main="DJF")
   plot(sa, add=T, lty=1, lwd=0.5)
   plot(djf_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
@@ -118,15 +152,26 @@ save_maps = function(djf_list, mam_list, jja_list, son_list, index, fname){
   plot(son_list[[index]],col=brewer.pal(6, "RdBu"), legend=F, , main="SON")
   plot(sa, add=T, lty=1, lwd=0.5)
   plot(son_list[[index]], col=brewer.pal(6, "RdBu"), legend.only=T, legend.width=1, legend.shrink=1, side=4)
+ 
   dev.off()
 }
 
 
 # Save for comparison
-save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 2, "precip_all.png")
-save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 3, "temp_all.png")
-save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 4, "precip2_all.png")
-save_maps(djf_coefs, mam_coefs, jja_coefs, son_coefs, 5, "temp2_all.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 2, "precip_zone1.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 3, "temp_zone1.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 4, "precip2_zone1.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 5, "temp2_zone1.png")
+
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 2, "precip_zone2.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 3, "temp_zone2.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 4, "precip2_zone2.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 5, "temp2_zone2.png")
+
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 2, "precip_zone3.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 3, "temp_zone3.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 4, "precip2_zone3.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 5, "temp2_zone3.png")
 
 # Filter them by significance
 filter_coefs = function(season_coefs){
@@ -152,18 +197,36 @@ filter_coefs = function(season_coefs){
 }
 
 # filter coefs
-djf_filtered = filter_coefs(djf_coefs)
-mam_filtered = filter_coefs(mam_coefs)
-jja_filtered = filter_coefs(jja_coefs)
-son_filtered = filter_coefs(son_coefs)
+djf_filtered_zone1 = filter_coefs(djf_coefs_zone1)
+mam_filtered_zone1 = filter_coefs(mam_coefs_zone1)
+jja_filtered_zone1 = filter_coefs(jja_coefs_zone1)
+son_filtered_zone1 = filter_coefs(son_coefs_zone1)
 
+djf_filtered_zone2 = filter_coefs(djf_coefs_zone2)
+mam_filtered_zone2 = filter_coefs(mam_coefs_zone2)
+jja_filtered_zone2 = filter_coefs(jja_coefs_zone2)
+son_filtered_zone2 = filter_coefs(son_coefs_zone2)
+
+djf_filtered_zone3 = filter_coefs(djf_coefs_zone3)
+mam_filtered_zone3 = filter_coefs(mam_coefs_zone3)
+jja_filtered_zone3 = filter_coefs(jja_coefs_zone3)
+son_filtered_zone3 = filter_coefs(son_coefs_zone3)
 
 # Save those plots!
-save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 1, "precip_signif005.png")
-save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 2, "precip2_signif005.png")
-save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 3, "temp_signif005.png")
-save_maps(djf_filtered, mam_filtered, jja_filtered, son_filtered, 4, "temp2_signif005.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 1, "precip_signif005_zone1.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 2, "precip2_signif005_zone1.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 3, "temp_signif005_zone1.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 4, "temp2_signif005_zone1.png")
 
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 1, "precip_signif005_zone2.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 2, "precip2_signif005_zone2.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 3, "temp_signif005_zone2.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 4, "temp2_signif005_zone2.png")
+
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 1, "precip_signif005_zone3.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 2, "precip2_signif005_zone3.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 3, "temp_signif005_zone3.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 4, "temp2_signif005_zone3.png")
 
 # Fnc to calculate optimum values
 calculate_optimum = function(season_coefs){
@@ -201,15 +264,30 @@ calculate_optimum = function(season_coefs){
 
 
 # Calculate optimum values
-djf_optimum = calculate_optimum(djf_coefs)
-mam_optimum = calculate_optimum(mam_coefs)
-jja_optimum = calculate_optimum(jja_coefs)
-son_optimum = calculate_optimum(son_coefs)
+djf_optimum_zone1 = calculate_optimum(djf_coefs_zone1)
+mam_optimum_zone1 = calculate_optimum(mam_coefs_zone1)
+jja_optimum_zone1 = calculate_optimum(jja_coefs_zone1)
+son_optimum_zone1 = calculate_optimum(son_coefs_zone1)
+
+djf_optimum_zone2 = calculate_optimum(djf_coefs_zone2)
+mam_optimum_zone2 = calculate_optimum(mam_coefs_zone2)
+jja_optimum_zone2 = calculate_optimum(jja_coefs_zone2)
+son_optimum_zone2 = calculate_optimum(son_coefs_zone2)
+
+djf_optimum_zone3 = calculate_optimum(djf_coefs_zone3)
+mam_optimum_zone3 = calculate_optimum(mam_coefs_zone3)
+jja_optimum_zone3 = calculate_optimum(jja_coefs_zone3)
+son_optimum_zone3 = calculate_optimum(son_coefs_zone3)
 
 # Plot optimum temp
-save_maps(djf_optimum, mam_optimum, jja_optimum, son_optimum, 1, "filtered_optimum_temp_005.png")
-save_maps(djf_optimum, mam_optimum, jja_optimum, son_optimum, 2, "filtered_optimum_precip_005.png")
+save_maps(djf_optimum_zone1, mam_optimum_zone1, jja_optimum_zone1, son_optimum_zone1, 1, "filtered_optimum_temp_005_zone1.png")
+save_maps(djf_optimum_zone1, mam_optimum_zone1, jja_optimum_zone1, son_optimum_zone1, 2, "filtered_optimum_precip_005_zone1.png")
 
+save_maps(djf_optimum_zone2, mam_optimum_zone2, jja_optimum_zone2, son_optimum_zone2, 1, "filtered_optimum_temp_005_zone2.png")
+save_maps(djf_optimum_zone2, mam_optimum_zone2, jja_optimum_zone2, son_optimum_zone2, 2, "filtered_optimum_precip_005_zone2.png")
+
+save_maps(djf_optimum_zone3, mam_optimum_zone3, jja_optimum_zone3, son_optimum_zone3, 1, "filtered_optimum_temp_005_zone3.png")
+save_maps(djf_optimum_zone3, mam_optimum_zone3, jja_optimum_zone3, son_optimum_zone3, 2, "filtered_optimum_precip_005_zone3.png")
 
 
 ## CALCULATE AND MAP ECOLOGICAL OPTIMUM
