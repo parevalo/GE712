@@ -24,16 +24,16 @@
 #' @description This function performs the parallel processing of raster stack objects.
 #'
 #' @noRd
-apply_stack_parallel <- function(x, fun, args.list = NULL, nl = nlayers(x), progress = 'text', filename = "", ...) {
+apply_stack_parallel <- function(x, fun, args.list = list(), nl = nlayers(x), progress = 'text', filename = "", ...) {
 
      # Create output raster
      out <- raster::brick(x, nl = nl, values = FALSE)
-     names(out) <- names(x)
+     #names(out) <- names(x)
      args.list <- c(args.list, nl = nl)
 
      # Create cluster
+     raster::beginCluster(...)
      cl <- raster::getCluster()
-     on.exit(raster::returnCluster())
      nodes <- length(cl)
 
      # Compute raster tiles
@@ -44,7 +44,7 @@ apply_stack_parallel <- function(x, fun, args.list = NULL, nl = nlayers(x), prog
      # Creat cluster function 
      cl_fun <- function(k, x, bs, fun, args.list){
        v <- raster::getValues(x, bs$row[k], bs$nrows[k])
-       apply(v, 1, fun, args.list)
+       t(apply(v, 1, fun, args.list))
      }
 
      # Get all nodes going
@@ -72,7 +72,8 @@ apply_stack_parallel <- function(x, fun, args.list = NULL, nl = nlayers(x), prog
 
           # error?
           if (! d$value$success) {
-               stop('cluster error')
+            print(d$value) 
+            stop('cluster error')
           }
 
           # which block is this?
@@ -108,7 +109,8 @@ apply_stack_parallel <- function(x, fun, args.list = NULL, nl = nlayers(x), prog
      raster::pbClose(pb)
 
      # Assign layers names
-     names(out) <- names(x)
+     #names(out) <- names(x)
+     raster::endCluster()
 
      return(out)
 }
