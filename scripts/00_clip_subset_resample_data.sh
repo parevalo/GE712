@@ -57,13 +57,13 @@ for i in $(find . -type f -name "3B43*.HDF"); do
     fi
 
     # Apply GCP to make them permament (i.e rotate)
-    if [ ! -f $fname"_warp.tif" ]; then
+    if [ ! -f $fname"_warp.tif" -o $overwrite == "Yes" ]; then
         gdalwarp -t_srs EPSG:4326 $fname"_GCP.tif" $fname"_warp.tif"
     fi
 
 
     # Extract data for pastures only
-    if [ ! -f $fname"_warp.tif" ]; then
+    if [ ! -f $fname"_warp.tif" -o $overwrite == "Yes" ]; then
         gdalwarp  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
          -cutline $pastures -cl pasture2000_GT_06 \
           -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
@@ -72,8 +72,8 @@ for i in $(find . -type f -name "3B43*.HDF"); do
 
    # Extract data for mainland southamerica only    
    # Resample data to 0.5 degree to match CRU resolution
-    if [ ! -f $fname"_clip.tif" ]; then
-        gdalwarp -te $xmin $ymin $xmax $ymax -dstnodata -9999 \
+    if [ ! -f $fname"_clip.tif" -o $overwrite == "Yes" ]; then
+        gdalwarp -te $xmin $ymin $xmax $ymax \
          -tr 0.5 0.5 -tap -r average -co COMPRESS=PACKBITS -overwrite \
          $fname"_pastures.tif" $fname"_clip.tif"
     fi
@@ -123,13 +123,20 @@ pastureraster=/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2
     fi
 
 # Mask thermal regimes using resampled pasture
-    if [ ! -f "thermal_regimes_pastures.tif" ]; then
+    if [ ! -f "thermal_regimes_mask.tif" ]; then
        gdal_calc.py -A $pastureraster -B thermal_regimes_resample_05.tif \
        --type=Byte --co="COMPRESS=PACKBITS" --overwrite \
-       --outfile="thermal_regimes_pastures.tif" \
+       --outfile="thermal_regimes_mask.tif" \
        --calc="logical_and(A >0 , B >= 1)*B"
+    fi 
+    
+# Extract only pasture pixels 
+    if [ ! -f "thermal_regimes_pastures" ]; then
+        gdalwarp  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+         -cutline $pastures -cl pasture2000_GT_06 \
+          -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
+           thermal_regimes_mask.tif thermal_regimes_pastures.tif
     fi
-
 
 # CHIRPS rainfall data at 0.05 spatial resolution 
 
@@ -160,33 +167,57 @@ done
 
 # Land cover change data (CCI) at 300 m spatial resolution 
 
-cd /projectnb/modislc/users/rkstan/GE712/data/CCI
+#cd /projectnb/modislc/users/rkstan/GE712/data/CCI
+
+#    # Extract data for mainland southamerica only
+#    if [ ! -f "land_cover_change_sa.tif" ]; then
+#       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -srcnodata 0 -dstnodata 0 \
+#       ESACCI-LC-L4-LCCS-Map-300m-P1Y-1992_2015-v2.0.7.tif land_cover_change_sa.tif
+#    fi   
 
    # Extract data for pastures only 
-    if [ ! -f "land_cover_change.tif" ]; then
-        gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
-        -cutline $pastures -cl pasture2000_GT_06 \
-        -cwhere "ID=1" -overwrite \
-        ESACCI-LC-L4-LCCS-Map-300m-P1Y-1992_2015-v2.0.7.tif land_cover_change.tif
-    fi
+#   if [ ! -f "land_cover_change_pasture.tif" ]; then
+#       gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+#       -cutline $pastures -cl pasture2000_GT_06 \
+#       -cwhere "ID=1" -overwrite \
+#       ESACCI-LC-L4-LCCS-Map-300m-P1Y-1992_2015-v2.0.7.tif land_cover_change_pasture.tif
+#   fi
 
-   # Reclassify land cover to limit to grassland and herbaceous vegetation 
-     if [ ! -f "land_cover_change_reclassify.tif" ]; then
-     gdal_calc.py -A land_cover_change.tif \
-     --outfile=land_cover_change_reclassify.tif \
-     --calc="1*(A>30)" --NoDataValue=0
-       fi
+   # Extract data for mainland southamerica only
+#   if [ ! -f "land_cover_change_clip.tif" ]; then
+#      gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -srcnodata 0 -dstnodata 0 \
+#      land_cover_change_pasture.tif land_cover_change_clip.tif
+#   fi   
+
+    # Reclassify land cover to limit to grassland and herbaceous vegetation 
+#     if [ ! -f "land_cover_change_reclassify.tif" ]; then
+#     gdal_calc.py -A land_cover_change_clip.tif \
+#     --outfile=land_cover_change_reclassify.tif \
+#     --type=Byte --co="COMPRESS=PACKBITS" --overwrite \
+#     --calc="(A==30)*1 + (A==40)*1 + (A==110)*1 + (A==130)*1 + (A==140)*1 + (A==150)*1 + (A==151)*1"
+#     fi
+
+# CATTLE data 
+
+cd /projectnb/modislc/users/rkstan/pasturelands/livestock.units/CATTLE
+
+# Extract data for mainland southamerica only
+if [ ! -f "Glb_Cattle_CC2006_AD_SA.tif" ]; then
+    gdalwarp -t_srs EPSG:4326 -te $xmin $ymin $xmax $ymax \
+    -co COMPRESS=PACKBITS -overwrite \
+     Glb_Cattle_CC2006_AD.tif  Glb_Cattle_CC2006_AD_SA.tif
+fi
+
+# Extract data for pastures only 
+if [ ! -f "Glb_Cattle_pasture.tif" ]; then
+    gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+    -cutline $pastures -cl pasture2000_GT_06 \
+     -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
+       Glb_Cattle_CC2006_AD_SA.tif Glb_Cattle_pasture.tif
+fi
 
 
-    # Extract data for mainland southamerica only
-    if [ ! -f "land_cover_change_resample_05.tif" ]; then
-       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -srcnodata 0 -dstnodata 0 \
-       -co COMPRESS=PACKBITS -overwrite \
-       land_cover_change.tif land_cover_change_resample_05.tif
-    fi
-
-
-# PAR
+#PAR data 
 
 #cd /projectnb/modislc/users/rkstan/GE712/data/PAR
 
