@@ -30,24 +30,28 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 # read in raster subset (in order to avoid running the first part again as it is slow!)
 cci_pasture_sub <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/cci_pasture_sub.envi")
 
-get_stat <- function(x, args.list){
+get_mask <- function(x, args.list){
   
   res <- rep(NA, args.list$nl)
   
- # if (anyNA(x))
-#    return(res)
-  
   n <- sum(is.na(x))
-  x[n>4]<-NA
-  x[is.na(x)] <- -9999
-  unique_vals = length(unique(x))
-  res <- c(uv = unique_vals)
+  
+  # Return NA if more than 4 NA in the time series
+  if(n > 4)
+    return(res)
+  
+  # Count values for each class
+  unique_vals <- table(x[!is.na(x)])
+  
+  # Replace res with class value if the class does not change over time
+  if(length(unique_vals)==1)
+    res <- rep(as.numeric(names(x)), args.list$nl)
+  
+  return(res)
+  
+}
 
-return(res)
-
-} 
-
-lcc_mask = apply_stack_parallel(cci_pasture_sub, fun =get_stat, nl = 1)
+lcc_mask = apply_stack_parallel(cci_pasture_sub, fun=get_mask, nl=1)
 
 # plot ------------------------------------------------------------------
 
