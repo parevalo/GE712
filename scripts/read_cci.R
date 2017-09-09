@@ -29,6 +29,11 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 # read in raster subset (in order to avoid running the first part again as it is slow!)
 cci_pasture_sub <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/cci_pasture_sub.envi")
+cci_sub <- cci_pasture_sub[[1:3]]
+cci_sub_crop <- crop(cci_sub, extent(cci_pasture_sub[[3]], 5000, 10000, 7000, 15000))
+setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
+writeRaster(cci_sub_crop, file= "cci_sub.hdr", format="ENVI", overwrite=TRUE)
+
 
 get_mask <- function(x, args.list){
   
