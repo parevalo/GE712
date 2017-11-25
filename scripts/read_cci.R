@@ -1,4 +1,4 @@
-source("/projectnb/modislc/users/rkstan/GE712/GE712/scripts/apply_stack_parallel.R")
+source("./apply_stack_parallel.R")
 
 # load libraries 
 library(RColorBrewer)
@@ -28,7 +28,7 @@ sa <- wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 # writeRaster(cci_pasture_sub, file= "cci_pasture_sub.hdr", format="ENVI", overwrite=TRUE)
 
 # read in raster subset (in order to avoid running the first part again as it is slow!)
-cci_pasture_sub <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/cci_pasture_sub.envi")
+cci_pasture_sub <- brick("~/Dropbox/YSSP/sample data/cci_sub.envi")
 cci_sub <- cci_pasture_sub[[1:3]]
 cci_sub_crop <- crop(cci_sub, extent(cci_pasture_sub[[3]], 5000, 10000, 7000, 15000))
 setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
@@ -50,13 +50,13 @@ get_mask <- function(x, args.list){
   
   # Replace res with class value if the class does not change over time
   if(length(unique_vals)==1)
-    res <- rep(as.numeric(names(x)), args.list$nl)
+    res <- rep(unique_vals, args.list$nl)
   
   return(res)
   
 }
 
-lcc_mask = apply_stack_parallel(cci_pasture_sub, fun=get_mask, nl=1)
+lcc_mask = apply_stack_parallel(x = cci_pasture_sub, fun = get_mask, nl = 1)
 
 # plot ------------------------------------------------------------------
 
