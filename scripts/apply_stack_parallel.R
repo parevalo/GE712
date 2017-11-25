@@ -40,7 +40,9 @@ apply_stack_parallel <- function(x, fun, args.list = list(), nl = nlayers(x), pr
      bs <- raster::blockSize(x, minblocks = nodes * 4)
      bs$array_rows <- cumsum(c(1, bs$nrows * out@ncols))
      pb <- raster::pbCreate(bs$n, progress = progress)
-
+     if(bs$n < nodes)
+       nodes <- bs$n
+       
      # Creat cluster function 
      cl_fun <- function(k, x, bs, fun, args.list){
        v <- raster::getValues(x, bs$row[k], bs$nrows[k])
