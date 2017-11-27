@@ -68,7 +68,10 @@ apply_stack_parallel <- function(x, fun, args.list = list(), nl = nlayers(x), pr
      }
 
      # Process raster tiles
-     for (k in 1:bs$n) {
+     for (k in 1:nodes) {
+       
+          print(k)
+       
           # receive results from a node
           d <- snow::recvOneData(cl)
 
