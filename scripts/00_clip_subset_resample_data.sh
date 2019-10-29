@@ -57,22 +57,22 @@ for i in $(find . -type f -name "3B43*.HDF"); do
     fi
 
     # Apply GCP to make them permament (i.e rotate)
-    if [ ! -f $fname"_warp.tif" -o $overwrite == "Yes" ]; then
+    if [ ! -f $fname"_warp.tif" ]; then
         gdalwarp -t_srs EPSG:4326 $fname"_GCP.tif" $fname"_warp.tif"
     fi
 
 
     # Extract data for pastures only
-    if [ ! -f $fname"_warp.tif" -o $overwrite == "Yes" ]; then
-        gdalwarp  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
-         -cutline $pastures -cl pasture2000_GT_06 \
+    if [ ! -f $fname"_warp.tif" ]; then
+        gdalwarp -srcnodata -9999  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+         -cutline $pastures -cl pasture2000_GT_06 -crop_to_cutline \
           -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
            $fname"_warp.tif" $fname"_pastures.tif"
     fi
 
    # Extract data for mainland southamerica only    
    # Resample data to 0.5 degree to match CRU resolution
-    if [ ! -f $fname"_clip.tif" -o $overwrite == "Yes" ]; then
+    if [ ! -f $fname"_clip.tif" ]; then
         gdalwarp -te $xmin $ymin $xmax $ymax \
          -tr 0.5 0.5 -tap -r average -co COMPRESS=PACKBITS -overwrite \
          $fname"_pastures.tif" $fname"_clip.tif"
@@ -109,11 +109,20 @@ cd /projectnb/modislc/users/rkstan/GE712/data/pasture_extent
        pasture2000_GT_06.tif pasture2000_GT_06_resample_05.tif
     fi
 
+    # Extract data for no land cover change pastures only 
+    if [ ! -f "pastures2000_GT_06_lcc.tif" ]; then
+        gdalwarp -srcnodata -9999  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+         -cutline $pastures -cl pasture2000_GT_06 -crop_to_cutline \
+          -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
+           pasture2000_GT_06.tif pastures2000_GT_06_lcc.tif
+    fi
+
+
+
 # Thermal regimes from IIASA v3
 
 cd /projectnb/modislc/users/rkstan/GE712/data/thermal_regions_IIASA_v3
 pastureraster=/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2000_GT_06_resample_05.tif
-
 
 # Resample thermal regimes to 0.5 degree grid 
     if [ ! -f "thermal_regimes_resample_05.tif" ]; then
@@ -140,25 +149,25 @@ pastureraster=/projectnb/modislc/users/rkstan/GE712/data/pasture_extent/pasture2
 
 # CHIRPS rainfall data at 0.05 spatial resolution 
 
-cd /projectnb/modislc/users/rkstan/GE712/data/CHIRPS
+cd /projectnb/modislc/users/rkstan/GE712/data/CHIRPS/values/annual
 
-for i in $(find . -type f -name "zscore*.tiff"); do
+for i in $(find . -type f -name "chirps-v2.0.*.tif"); do
 
     # Extract basename
-    fname=$(basename $i | awk -F ".tiff" '{print $1}')
+    fname=$(basename $i | awk -F ".tif" '{print $1}')
 
     # Extract data for pastures only
     if [ ! -f $fname"_pastures.tif" ]; then
         gdalwarp  --config GDALWARP_IGNORE_BAD_CUTLINE YES \
          -cutline $pastures -cl pasture2000_GT_06 \
           -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
-           $fname".tiff" $fname"_pastures.tif"
+           $fname".tif" $fname"_pastures.tif"
     fi    
 
 
     # Extract data for mainland southamerica only
     if [ ! -f $fname"_clip.tif" ]; then
-        gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -srcnodata -9999 -dstnodata -9999 \
+        gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -srcnodata -9999 \
          -co COMPRESS=PACKBITS -overwrite \
          $fname"_pastures.tif" $fname"_clip.tif"
     fi
@@ -215,6 +224,80 @@ if [ ! -f "Glb_Cattle_pasture.tif" ]; then
      -cwhere "ID=1" -co COMPRESS=PACKBITS -overwrite \
        Glb_Cattle_CC2006_AD_SA.tif Glb_Cattle_pasture.tif
 fi
+
+
+    if [ ! -f "Glb_Cattle_resample_05.tif" ]; then
+       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
+       -r average -co COMPRESS=PACKBITS -overwrite \
+       Glb_Cattle_pasture.tif Glb_Cattle_resample_05.tif
+   fi
+
+# Land cover change Data
+# Resample to match the grid
+
+cd /projectnb/modislc/users/rkstan/GE712/outputs/
+
+    if [ ! -f "lcc_mask_resample.tif" ]; then
+       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.5 0.5 -tap \
+       -r average -co COMPRESS=PACKBITS -overwrite \
+       lcc_mask.envi lcc_mask_resample.tif
+    fi
+
+
+
+# Read in FAO livestock production systems data 
+
+cd /projectnb/modislc/users/rkstan/GE712/data/FAO
+
+    # Get EVI 
+    if [ ! -f "livestock_production_system_pastures.tif" ]; then
+        gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+        -cutline $pastures -cl pasture2000_GT_06 \
+        -cwhere "ID=1" -overwrite \
+        livestock_production_system_SA.envi livestock_production_system_pastures.tif
+    fi
+
+# resample for 4 different management strategies 
+    if [ ! -f "livestock_production_system_pastures_005.tif" ]; then
+       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.05 0.05 -tap \
+       -r near -co COMPRESS=PACKBITS -overwrite \
+       livestock_production_system_4class.envi livestock_production_system_pastures_005.tif
+    fi
+
+# resample for 5 different agroecological zones
+    if [ ! -f "livestock_production_system_pastures_zones_005.tif" ]; then
+       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.05 0.05 -tap \
+       -r near -co COMPRESS=PACKBITS -overwrite \
+       livestock_production_system_5class.envi livestock_production_system_pastures_zones_005.tif
+    fi
+
+    # Get EVI 
+    if [ ! -f "livestock_density_observed_pastures.tif" ]; then
+        gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+        -cutline $pastures -cl pasture2000_GT_06 \
+        -cwhere "ID=1" -overwrite \
+        livestock_density_observed_SA.envi livestock_density_observed_pastures.tif
+    fi
+
+# clip and resample the feed requirements 
+
+cd /projectnb/modislc/users/rkstan/GE712/data/GLOBIOM
+
+    # Get EVI 
+    if [ ! -f "tDM_yr_pastures.tif" ]; then
+        gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES \
+        -cutline $pastures -cl pasture2000_GT_06 \
+        -cwhere "ID=1" -overwrite \
+        tDM_yr.envi tDM_yr_pastures.tif
+    fi
+
+# resample for 4 different management strategies 
+    if [ ! -f "tDM_yr_pastures_005.tif" ]; then
+       gdalwarp -te $xmin $ymin $xmax $ymax -t_srs EPSG:4326 -tr 0.05 0.05 -tap \
+       -r near -co COMPRESS=PACKBITS -overwrite \
+       tDM_yr_pastures.tif tDM_yr_pastures_005.tif
+    fi
+
 
 
 #PAR data 

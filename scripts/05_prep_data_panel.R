@@ -20,10 +20,21 @@ precip <- read.csv(file=sprintf("/projectnb/modislc/users/rkstan/GE712/outputs/p
 temp <- read.csv(file=sprintf("/projectnb/modislc/users/rkstan/GE712/outputs/temp_%s_%s.csv", args$time, args$type))
 evi <- read.csv(file=sprintf("/projectnb/modislc/users/rkstan/GE712/outputs/EVI_%s_%s.csv", args$time, args$type))
 thermal_regions <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/thermal_regions_vals.csv")
+thermal_regions <- read.csv(file="/projectnb/modislc/users/rkstan/GE712/outputs/lps_resampled_vals_05.csv")
+#colnames(lps_regions) <- "zones"
 
 # Merge and remove rows with at least one NA
 total <- cbind(evi, precip, temp, thermal_regions)
 total_filtered = na.omit(total)
+
+# precip2 <- precip^2
+# temp2 <- temp^2
+
+# total <- cbind(evi, precip, temp, precip2, temp2)
+# total_filtered = na.omit(total)
+# sub_sample <- total_filtered[sample(nrow(total_filtered),100, replace=FALSE, prob=NULL),]
+# write.csv(sub_sample, "panel_seasonal_dataset_sample.csv", quote =F, row.names = F)
+# 
 
 # Get season indices
 djf_index = grep("DJF", colnames(total_filtered))
@@ -73,7 +84,6 @@ rep.col <- function(x,n){
 }
 total_regions <- as.data.frame(rep.col(total_filtered[,157], 52))
 
-
 # Function to tidy each of the dataframes read from the csv files. 
 tidy_data = function(df, period_name){
   # Create ID column
@@ -98,6 +108,36 @@ colnames(full_dataset) = c("ID", sprintf("%s", args$time), "precip", "temp", "ev
 
 full_dataset_wcell <- cbind(rep(rownames(total_precip), each=52), tidy_precip, tidy_temp$value, tidy_EVI$value, tidy_regions$value)
 colnames(full_dataset_wcell) = c("cell", "ID", sprintf("%s", args$time), "precip", "temp", "evi", "region")
+
+# scatter plot of the variables 
+full_dataset[grep("DJF", full_dataset[,2]),2] <- "DJF"
+full_dataset[grep("MAM", full_dataset[,2]),2] <- "MAM"
+full_dataset[grep("JJA", full_dataset[,2]),2] <- "JJA"
+full_dataset[grep("SON", full_dataset[,2]),2] <- "SON"
+
+# plot temp versus evi 
+p <- ggplot(full_dataset, aes(temp, evi)) + geom_point(aes(colour=seas))
+#p + facet_grid(. ~region) + stat_smooth(method="lm", se=FALSE)
+p + facet_grid(. ~region) 
+p <- ggplot(full_dataset, aes(temp, evi)) + geom_point(aes(colour=region))
+p + facet_grid(. ~seas)
+
+# plot precip  versus evi 
+p <- ggplot(full_dataset, aes(precip, evi)) + geom_point(aes(colour=seas))
+p + facet_grid(. ~region) 
+p <- ggplot(full_dataset, aes(precip, evi)) + geom_point(aes(colour=region))
+p + facet_grid(. ~seas) 
+
+
+p <- ggplot(full_dataset, aes(temp, precip)) + geom_point(aes(colour=evi))
+p + facet_grid(. ~region)
+p <- ggplot(full_dataset, aes(temp, precip)) + geom_point(aes(colour=evi))
+p + facet_grid(. ~seas)
+
+p <- ggplot(subset(full_dataset, seas %in% c("SON")), aes(precip, evi)) + geom_point(aes(colour=seas))
+p + facet_grid(. ~region)+ stat_smooth(method="lm", se=FALSE)
+p <- ggplot(subset(full_dataset, region %in% c(2)), aes(precip, evi)) + geom_point(aes(colour=region))
+p + facet_grid(. ~seas) 
 
 # Get season indices
 djf_index = grep("DJF", full_dataset_wcell[,3])
@@ -144,17 +184,17 @@ djf_sub = filter(djf, seas != "DJF")
 son_sub = filter(son, seas != "SON.12")
 jja_sub = filter(jja, seas != "JJA.12")
 
-djf2_zone1 = cbind(djf_sub[which(djf_sub[,7]==1),c(1,4:6)], son_sub[which(son_sub[,7]==1),4:5], jja_sub[which(jja_sub[,7]==1),4:5])
+djf2_zone1 = cbind(djf_sub[which(djf_sub[,7]==1),c(1,4:6)], son_sub[which(son_sub[,7]==1),4:6], jja_sub[which(jja_sub[,7]==1),4:5])
 colnames(djf2_zone1) = c("cell","precip", "temp", "evi", 
-                   "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                   "precip_lag1", "temp_lag1", "evi_lag1", "precip_lag2", "temp_lag2")
 
-djf2_zone2 = cbind(djf_sub[which(djf_sub[,7]==2),c(1,4:6)], son_sub[which(son_sub[,7]==2),4:5], jja_sub[which(jja_sub[,7]==2),4:5])
+djf2_zone2 = cbind(djf_sub[which(djf_sub[,7]==2),c(1,4:6)], son_sub[which(son_sub[,7]==2),4:6], jja_sub[which(jja_sub[,7]==2),4:5])
 colnames(djf2_zone2) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-djf2_zone3 = cbind(djf_sub[which(djf_sub[,7]==3),c(1,4:6)], son_sub[which(son_sub[,7]==3),4:5], jja_sub[which(jja_sub[,7]==3),4:5])
+djf2_zone3 = cbind(djf_sub[which(djf_sub[,7]==3),c(1,4:6)], son_sub[which(son_sub[,7]==3),4:6], jja_sub[which(jja_sub[,7]==3),4:5])
 colnames(djf2_zone3) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
 # FALL DATA (MAM) starts in SECOND year bc we need summer(DJF) and spring (SON) from previous year
 # so we need to remove the first MAM year FROM ALL INDIVIDUALS and the last from DJF and SON
@@ -162,43 +202,43 @@ mam_sub = filter(mam, seas != "MAM")
 djf_sub = filter(djf, seas != "DJF.12")
 son_sub = filter(son, seas != "SON.12")
 
-mam2_zone1 = cbind(mam_sub[which(mam_sub[,7]==1),c(1,4:6)], djf_sub[which(djf_sub[,7]==1),4:5], son_sub[which(son_sub[,7]==1),4:5])
+mam2_zone1 = cbind(mam_sub[which(mam_sub[,7]==1),c(1,4:6)], djf_sub[which(djf_sub[,7]==1),4:6], son_sub[which(son_sub[,7]==1),4:5])
 colnames(mam2_zone1) = c("cell","precip", "temp", "evi", 
-                   "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                   "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-mam2_zone2 = cbind(mam_sub[which(mam_sub[,7]==2),c(1,4:6)], djf_sub[which(djf_sub[,7]==2),4:5], son_sub[which(son_sub[,7]==2),4:5])
+mam2_zone2 = cbind(mam_sub[which(mam_sub[,7]==2),c(1,4:6)], djf_sub[which(djf_sub[,7]==2),4:6], son_sub[which(son_sub[,7]==2),4:5])
 colnames(mam2_zone2) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-mam2_zone3 = cbind(mam_sub[which(mam_sub[,7]==3),c(1,4:6)], djf_sub[which(djf_sub[,7]==3),4:5], son_sub[which(son_sub[,7]==3),4:5])
+mam2_zone3 = cbind(mam_sub[which(mam_sub[,7]==3),c(1,4:6)], djf_sub[which(djf_sub[,7]==3),4:6], son_sub[which(son_sub[,7]==3),4:5])
 colnames(mam2_zone3) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
 # WINTER DATA (JJA) starts in FIRST year bc we have fall(MAM) and summer(DJF) from that year
-jja2_zone1 = cbind(jja[which(jja[,7]==1),c(1,4:6)], mam[which(mam[,7]==1), 4:5], djf[which(djf[,7]==1), 4:5])
+jja2_zone1 = cbind(jja[which(jja[,7]==1),c(1,4:6)], mam[which(mam[,7]==1), 4:6], djf[which(djf[,7]==1), 4:5])
 colnames(jja2_zone1) = c("cell","precip", "temp", "evi", 
-                   "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                   "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-jja2_zone2 = cbind(jja[which(jja[,7]==2),c(1,4:6)], mam[which(mam[,7]==2), 4:5], djf[which(djf[,7]==2), 4:5])
+jja2_zone2 = cbind(jja[which(jja[,7]==2),c(1,4:6)], mam[which(mam[,7]==2), 4:6], djf[which(djf[,7]==2), 4:5])
 colnames(jja2_zone2) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-jja2_zone3 = cbind(jja[which(jja[,7]==3),c(1,4:6)], mam[which(mam[,7]==3), 4:5], djf[which(djf[,7]==3), 4:5])
+jja2_zone3 = cbind(jja[which(jja[,7]==3),c(1,4:6)], mam[which(mam[,7]==3), 4:6], djf[which(djf[,7]==3), 4:5])
 colnames(jja2_zone3) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
 # SPRING DATA (SON) starts in FIRST year bc we have winter(JJA) and fall(MAM) from that year
-son2_zone1 = cbind(son[which(son[,7]==1),c(1,4:6)], jja[which(jja[,7]==1), 4:5], mam[which(mam[,7]==1), 4:5])
+son2_zone1 = cbind(son[which(son[,7]==1),c(1,4:6)], jja[which(jja[,7]==1), 4:6], mam[which(mam[,7]==1), 4:5])
 colnames(son2_zone1) = c("cell","precip", "temp", "evi", 
-                   "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                   "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-son2_zone2 = cbind(son[which(son[,7]==2),c(1,4:6)], jja[which(jja[,7]==2), 4:5], mam[which(mam[,7]==2), 4:5])
+son2_zone2 = cbind(son[which(son[,7]==2),c(1,4:6)], jja[which(jja[,7]==2), 4:6], mam[which(mam[,7]==2), 4:5])
 colnames(son2_zone2) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
-son2_zone3 = cbind(son[which(son[,7]==3),c(1,4:6)], jja[which(jja[,7]==3), 4:5], mam[which(mam[,7]==3), 4:5])
+son2_zone3 = cbind(son[which(son[,7]==3),c(1,4:6)], jja[which(jja[,7]==3), 4:6], mam[which(mam[,7]==3), 4:5])
 colnames(son2_zone3) = c("cell","precip", "temp", "evi", 
-                         "precip_lag1", "temp_lag1", "precip_lag2", "temp_lag2")
+                         "precip_lag1", "temp_lag1", "evi_lag1","precip_lag2", "temp_lag2")
 
 # Save these datasets for use in RATS
 write.csv(djf2_zone1[,-1], sprintf("djf2_zone1_%s_%s.csv", args$time, args$type), quote =F, row.names = F)
@@ -251,7 +291,7 @@ names(seas2_zone_list_1) <- c("djf2_zone1", "djf2_zone2","djf2_zone3","mam2_zone
 
 # write out raster files 
 for (i in 1:length(seas2_zone_list_1)){
-  seas2_raster <- brick(nrows=138, ncols=94, nl=84, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
+  seas2_raster <- brick(nrows=138, ncols=94, nl=96, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
                        xmn=-81.5, xmx=-34.5, ymn=-56.5, ymx=12.5)
   setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
   
@@ -264,7 +304,7 @@ names(seas2_zone_list_2) <- c("jja2_zone1","jja2_zone2","jja2_zone3","son2_zone1
 
 # write out raster files 
 for (i in 1:length(seas2_zone_list_2)){
-  seas2_raster <- brick(nrows=138, ncols=94, nl=91, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
+  seas2_raster <- brick(nrows=138, ncols=94, nl=104, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0",
                         xmn=-81.5, xmx=-34.5, ymn=-56.5, ymx=12.5)
   setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
   

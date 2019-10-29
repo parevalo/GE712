@@ -18,24 +18,6 @@ library(maps)
 library(RColorBrewer)
 
 # define functions --------------------------
-# make a matrix of all the z score values from a raster stack
-get_raster_vals <- function(data){
-  
-  z_values <- matrix(NA, nrow=259200,ncol=dim(data)[3])
-  for (i in 1:dim(data)[3]) {
-    sub_values1 <- getValues(data[[i]])
-    
-    if(i==1){
-      z_values <-sub_values1
-      
-    }else{
-      z_values <- cbind(z_values, sub_values1)
-      
-    }
-  }
-  return(z_values)
-  
-}
 
 # assign in variables ------------------------
 year <- rep(1:13, each=12)
@@ -93,8 +75,8 @@ for (t in 1:13){
     # calculate the mean precipitation of each month over the whole 14 year period (excluding each time the month of interest)
     # NOTE that all 1s are Decembers from 2002 to 2015
     #precip_month_mean <- calc(dropLayer(stack(precip_sub_unstack[m_year==m]), t),mean, na.rm=T)
-    precip_month_mean <- calc(stack(precip_sub_unstack[m_year==m]),mean, na.rm=T)
-    precip_month_sd <- calc(stack(precip_sub_unstack[m_year==m]),sd, na.rm=T) # calculate the standard deviation 
+    precip_month_mean <- calc(stack(precip_sub_unstack[m_year==m]),mean, na.rm=F)
+    precip_month_sd <- calc(stack(precip_sub_unstack[m_year==m]),sd, na.rm=F) # calculate the standard deviation 
     precip_month_year <- stack(precip_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
@@ -121,7 +103,7 @@ precip_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 # full_new <- full[full$ID %in% f$ID,]
 
 # get the anomalies in a matrix and save as csv 
-precip_monthly_anomalies_vals <- get_raster_vals(stack(precip_monthly_anomalies))
+precip_monthly_anomalies_vals <- getValues(stack(precip_monthly_anomalies))
 colnames(precip_monthly_anomalies_vals) <- rep(c("December", "January", "February", "March", "April", 
                                                "May", "June", "July", "August", "September", "October", "November"), 13)
 write.csv(precip_monthly_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_monthly_anomalies.csv", quote=FALSE, row.names=FALSE)
@@ -148,14 +130,14 @@ seas_vals_all <- list()
 for (t in 1:13){
   for (m in 1:4){
     # calculate the mean precipitation of each month over the whole 14 year period (excluding each time the month of interest)
-    #precip_seas_sum <- stackApply(stack(precip_sub_unstack[seasons==m]), index, mean, na.rm=F)
-    precip_seas_mean <-calc(stack(precip_sub_unstack[seasons==m]),mean, na.rm=T)
-    #precip_seas_mean <-calc(precip_seas_sum,mean, na.rm=F)
+    precip_seas_sum <- stackApply(stack(precip_sub_unstack[seasons==m]), index, sum, na.rm=F)
+    #precip_seas_mean <-calc(stack(precip_sub_unstack[seasons==m]),mean, na.rm=T)
+    precip_seas_mean <-calc(precip_seas_sum,mean, na.rm=F)
     #precip_seas_mean <-calc(dropLayer(stack(precip_sub_unstack[seasons==m]), which(index==t, arr.ind=TRUE)),mean, na.rm=T)
-    #precip_seas_sd <- calc(precip_seas_sum,sd, na.rm=F) # calculate the standard deviation 
-    precip_seas_sd <- calc(stack(precip_sub_unstack[seasons==m]),sd, na.rm=T)
+    precip_seas_sd <- calc(precip_seas_sum,sd, na.rm=F) # calculate the standard deviation 
+    #precip_seas_sd <- calc(stack(precip_sub_unstack[seasons==m]),sd, na.rm=T)
     #precip_mean <- stackApply(stack(precip_sub_unstack[seasons==m]), index, mean, na.rm=T)[[t]]'
-    precip_sum <- stackApply(stack(precip_sub_unstack[seasons==m]), index, mean, na.rm=T)[[t]]
+    precip_sum <- stackApply(stack(precip_sub_unstack[seasons==m]), index, sum, na.rm=F)[[t]]
     
     
     # calculate the anomaly 
@@ -176,13 +158,13 @@ precip_seas_vals <- stack(unlist(seas_vals_all, recursive = T))
 # points_seas@data
 
 # get the seasonal anomalies in a matrix and save as csv 
-precip_seas_anomalies_vals <- get_raster_vals(stack(precip_seas_anomalies))
+precip_seas_anomalies_vals <- getValues(stack(precip_seas_anomalies))
 colnames(precip_seas_anomalies_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 #write.csv(precip_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
 write.csv(precip_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_sum_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
 
 # get the seasonal values in a matrix and save as csv 
-precip_seasonal_vals <- get_raster_vals(stack(precip_seas_vals))
+precip_seasonal_vals <- getValues(stack(precip_seas_vals))
 colnames(precip_seasonal_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 #write.csv(precip_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
 write.csv(precip_seasonal_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_sum_seas_vals.csv", quote=FALSE, row.names=FALSE)
@@ -199,11 +181,11 @@ write.csv(precip_seas_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE71
 # calculate yearly anomalies -------------------------------------------------
 year_anom <- list()
 precip_sub_year <- dropLayer(precip_time_sub, 1)
-precip_year <- stackApply(precip_sub_year, year, fun=mean, na.rm=T)
+precip_year <- stackApply(precip_sub_year, year, fun=sum, na.rm=F)
 
 for (t in 1:13){
-  precip_year_mean <-calc(precip_sub_year,mean, na.rm=T)
-  precip_year_sd <-calc(precip_sub_year,sd, na.rm=T)
+  precip_year_mean <-calc(precip_sub_year,mean, na.rm=F)
+  precip_year_sd <-calc(precip_sub_year,sd, na.rm=F)
   precip_year_t <- precip_year[[t]]
   
   # calculate the anomaly 
@@ -215,11 +197,15 @@ for (t in 1:13){
 precip_year_anomalies <- stack(unlist(year_anom, recursive = T))
 
 # get the year anomalies in a matrix and save as csv 
-precip_year_anomalies_vals <- get_raster_vals(stack(precip_year_anomalies))
+precip_year_anomalies_vals <- getValues(stack(precip_year_anomalies))
 colnames(precip_year_anomalies_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
                                         "2013", "2014", "2015")
 write.csv(precip_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_year_anomalies.csv", quote=FALSE, row.names=FALSE)
 
+precip_year_vals <- getValues(precip_year)
+colnames(precip_year_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+                              "2013", "2014", "2015")
+write.csv(precip_year_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/precip_year_vals.csv", quote=FALSE, row.names=FALSE)
 
 # plot monthly anomalies -------------------------------------------------
 names(precip_monthly_anomalies[[3]]) <- paste0("Y", 2003:2015)

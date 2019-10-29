@@ -11,25 +11,25 @@ SA = c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana
 sa = wrld_simpl[which(wrld_simpl@data$NAME %in% SA),]
 
 # Read in stacks of evi, precip and temp, 13 layers each
-djf_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone1.envi")
-mam_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone1.envi")
-jja_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone1.envi")
-son_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone1.envi")
+djf_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf2_zone1.envi")
+mam_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam2_zone1.envi")
+jja_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja2_zone1.envi")
+son_raster_zone1 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son2_zone1.envi")
 
-djf_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone2.envi")
-mam_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone2.envi")
-jja_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone2.envi")
-son_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone2.envi")
+djf_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf2_zone2.envi")
+mam_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam2_zone2.envi")
+jja_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja2_zone2.envi")
+son_raster_zone2 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son2_zone2.envi")
 
-djf_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf_zone3.envi")
-mam_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam_zone3.envi")
-jja_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja_zone3.envi")
-son_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son_zone3.envi")
+djf_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/djf2_zone3.envi")
+mam_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/mam2_zone3.envi")
+jja_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/jja2_zone3.envi")
+son_raster_zone3 <- brick("/projectnb/modislc/users/rkstan/GE712/outputs/son2_zone3.envi")
 
 #v <- raster::getValues(x)
 #i = which(!apply(v, 1, anyNA))
-#aux = apply(v, 1, get_stat, args.list=list(nl=18))
-#apply(v[i[1:2],], 1, get_stat, args.list=list(nl=18)) 
+#aux = apply(v, 1, get_stat, args.list=list(nl=26))
+#apply(v[i,], 1, get_stat, args.list=list(nl=26)) 
 
 get_stat <- function(x, args.list){
 
@@ -38,27 +38,40 @@ get_stat <- function(x, args.list){
   if (anyNA(x))
     return(res)
   
-  m1 <- lm(x[1:13] ~ x[14:26] + x[27:39] + I(x[14:26]^2) + I(x[27:39]^2))
+  m1 <- lm(x[25:36] ~ x[1:12] + x[13:24] +  I(x[1:12]^2) + I(x[13:24]^2) + x[37:48] + x[49:60] +  I(x[37:48]^2) + I(x[49:60]^2) + x[61:72])
   m1$coefficients[m1$coefficients>20 | m1$coefficients < (-20)] <- NA
-  m2 <- lm(x[1:13] ~ x[14:26] +  I(x[14:26]^2))
+  m2 <- lm(x[25:36] ~ x[1:12] +  I(x[1:12]^2))
   m2$coefficients[m2$coefficients>20 | m2$coefficients < (-20)] <- NA
-  m3 <- lm(x[1:13] ~ x[27:39] +  I(x[27:39]^2))
+  m3 <- lm(x[25:36] ~ x[13:24] +  I(x[13:24]^2))
   m3$coefficients[m3$coefficients>20 | m3$coefficients < (-20)] <- NA
   sm1 <- summary(m1)
   sm2 <- summary(m2)
   sm3 <- summary(m3)
   
   
-  res <- c(intercept          = m1$coefficients[1], # Why the equation is different from the otehrs lm(x[1:13] ~ x[14:26]) ???
-           beta_precip        = m1$coefficients[2], 
-           beta_temp          = m1$coefficients[3],
-           beta_precip2       = m1$coefficients[4],
-           beta_temp2         = m1$coefficients[5],
-           rsquared           = sm1$r.squared, 
-           signif_precip      = sm1$coefficients[2,4],
-           signif_temp        = sm1$coefficients[3,4],
-           signif_precip2     = sm1$coefficients[4,4],
-           signif_temp2       = sm1$coefficients[5,4], # Why this is the same as signif_precip2
+  res <- c(intercept               = m1$coefficients[1], # Why the equation is different from the otehrs lm(x[1:13] ~ x[14:26]) ???
+           beta_precip             = m1$coefficients[2], 
+           beta_temp               = m1$coefficients[3],
+           beta_precip2            = m1$coefficients[4],
+           beta_temp2              = m1$coefficients[5],
+           beta_precip_lag1        = m1$coefficients[6], 
+           beta_temp_lag1          = m1$coefficients[7],
+           beta_precip2_lag1       = m1$coefficients[8],
+           beta_temp2_lag1         = m1$coefficients[9],
+           beta_evi_lag1           = m1$coefficients[10],
+           
+           rsquared                = sm1$r.squared, 
+           
+           signif_precip           = sm1$coefficients[2,4],
+           signif_temp             = sm1$coefficients[3,4],
+           signif_precip2          = sm1$coefficients[4,4],
+           signif_temp2            = sm1$coefficients[5,4], # Why this is the same as signif_precip2
+           signif_precip_lag1      = sm1$coefficients[6,4],
+           signif_temp_lag1        = sm1$coefficients[7,4],
+           signif_precip2_lag1     = sm1$coefficients[8,4],
+           signif_temp2_lag1       = sm1$coefficients[9,4], # Why this is the same as signif_precip2
+           signif_evi_lag1         = sm1$coefficients[10,4],
+           
            beta_precip_opt    = m2$coefficients[2],
            beta_precip2_opt   = m2$coefficients[3],
            beta_temp_opt      = m3$coefficients[2],
@@ -74,20 +87,20 @@ get_stat <- function(x, args.list){
 }  
 
 # Get ALL coefficients per season
-djf_coefs_zone1 = apply_stack_parallel(djf_raster_zone1, fun = get_stat, nl = 18)
-mam_coefs_zone1 = apply_stack_parallel(mam_raster_zone1, fun = get_stat, nl = 18)
-jja_coefs_zone1 = apply_stack_parallel(jja_raster_zone1, fun = get_stat, nl = 18)
-son_coefs_zone1 = apply_stack_parallel(son_raster_zone1, fun = get_stat, nl = 18)
+djf_coefs_zone1 = apply_stack_parallel(djf_raster_zone1, fun = get_stat, nl = 28)
+mam_coefs_zone1 = apply_stack_parallel(mam_raster_zone1, fun = get_stat, nl = 28)
+jja_coefs_zone1 = apply_stack_parallel(jja_raster_zone1, fun = get_stat, nl = 28)
+son_coefs_zone1 = apply_stack_parallel(son_raster_zone1, fun = get_stat, nl = 28)
 
-djf_coefs_zone2 = apply_stack_parallel(djf_raster_zone2, fun = get_stat, nl = 18)
-mam_coefs_zone2 = apply_stack_parallel(mam_raster_zone2, fun = get_stat, nl = 18)
-jja_coefs_zone2 = apply_stack_parallel(jja_raster_zone2, fun = get_stat, nl = 18)
-son_coefs_zone2 = apply_stack_parallel(son_raster_zone2, fun = get_stat, nl = 18)
+djf_coefs_zone2 = apply_stack_parallel(djf_raster_zone2, fun = get_stat, nl = 28)
+mam_coefs_zone2 = apply_stack_parallel(mam_raster_zone2, fun = get_stat, nl = 28)
+jja_coefs_zone2 = apply_stack_parallel(jja_raster_zone2, fun = get_stat, nl = 28)
+son_coefs_zone2 = apply_stack_parallel(son_raster_zone2, fun = get_stat, nl = 28)
 
-djf_coefs_zone3 = apply_stack_parallel(djf_raster_zone3, fun = get_stat, nl = 18)
-mam_coefs_zone3 = apply_stack_parallel(mam_raster_zone3, fun = get_stat, nl = 18)
-jja_coefs_zone3 = apply_stack_parallel(jja_raster_zone3, fun = get_stat, nl = 18)
-son_coefs_zone3 = apply_stack_parallel(son_raster_zone3, fun = get_stat, nl = 18)
+djf_coefs_zone3 = apply_stack_parallel(djf_raster_zone3, fun = get_stat, nl = 28)
+mam_coefs_zone3 = apply_stack_parallel(mam_raster_zone3, fun = get_stat, nl = 28)
+jja_coefs_zone3 = apply_stack_parallel(jja_raster_zone3, fun = get_stat, nl = 28)
+son_coefs_zone3 = apply_stack_parallel(son_raster_zone3, fun = get_stat, nl = 28)
 
 #Function to save a single figure with the coefficients/optimum with all the four seasons
 setwd("/projectnb/modislc/users/rkstan/GE712/outputs/")
@@ -121,38 +134,69 @@ save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 2,
 save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 3, sa, "temp_zone1.png")
 save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 4, sa, "precip2_zone1.png")
 save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 5, sa, "temp2_zone1.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 6, sa, "precip_zone1_lagged.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 7, sa, "temp_zone1_lagged.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 8, sa, "precip2_zone1_lagged.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 9, sa, "temp2_zone1_lagged.png")
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 10, sa, "evi_zone1_lagged.png")
+
+save_maps(djf_coefs_zone1, mam_coefs_zone1, jja_coefs_zone1, son_coefs_zone1, 11, sa, "rsquared_zone1.png")
 
 save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 2, sa, "precip_zone2.png")
 save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 3, sa, "temp_zone2.png")
 save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 4, sa, "precip2_zone2.png")
 save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 5, sa, "temp2_zone2.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 6, sa, "precip_zone2_lagged.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 7, sa, "temp_zone2_lagged.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 8, sa, "precip2_zone2_lagged.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 9, sa, "temp2_zone2_lagged.png")
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 10, sa, "evi_zone2_lagged.png")
+
+save_maps(djf_coefs_zone2, mam_coefs_zone2, jja_coefs_zone2, son_coefs_zone2, 11, sa, "rsquared_zone2.png")
 
 save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 2, sa, "precip_zone3.png")
 save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 3, sa, "temp_zone3.png")
 save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 4, sa, "precip2_zone3.png")
 save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 5, sa, "temp2_zone3.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 6, sa, "precip_zone3_lagged.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 7, sa, "temp_zone3_lagged.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 8, sa, "precip2_zone3_lagged.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 9, sa, "temp2_zone3_lagged.png")
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 10, sa, "evi_zone3_lagged.png")
+
+save_maps(djf_coefs_zone3, mam_coefs_zone3, jja_coefs_zone3, son_coefs_zone3, 11, sa, "rsquared_zone3.png")
 
 # Filter them by significance
 filter_coefs = function(season_coefs){
   # Create masks with threshold for significance
   filter_signif = function(x){ x[x > 0.05] = NA; return(x)}
   #filter_outliers = function(x){ x[x>20 | x < (-20)] <- NA; return(x)}
-  precip_mask = calc(season_coefs[[7]], filter_signif)
-  temp_mask = calc(season_coefs[[8]], filter_signif)
-  precip2_mask = calc(season_coefs[[9]], filter_signif)
-  temp2_mask = calc(season_coefs[[10]], filter_signif)
+  precip_mask = calc(season_coefs[[11]], filter_signif)
+  temp_mask = calc(season_coefs[[12]], filter_signif)
+  precip2_mask = calc(season_coefs[[13]], filter_signif)
+  temp2_mask = calc(season_coefs[[14]], filter_signif)
+  precip_mask_lagged = calc(season_coefs[[15]], filter_signif)
+  temp_mask_lagged = calc(season_coefs[[16]], filter_signif)
+  precip2_mask_lagged = calc(season_coefs[[17]], filter_signif)
+  temp2_mask_lagged = calc(season_coefs[[18]], filter_signif)
+  evi_mask_lagged = calc(season_coefs[[19]], filter_signif)
   
   # Filter actual coefficients using the masks we created
   precip_masked = mask(season_coefs[[2]], precip_mask)
   temp_masked = mask(season_coefs[[3]], precip2_mask)
   precip2_masked = mask(season_coefs[[4]], temp_mask)
   temp2_masked = mask(season_coefs[[5]], temp2_mask)
+  precip_masked_lagged = mask(season_coefs[[6]], precip_mask_lagged)
+  temp_masked_lagged = mask(season_coefs[[7]], precip2_mask_lagged)
+  precip2_masked_lagged = mask(season_coefs[[8]], temp_mask_lagged)
+  temp2_masked_lagged = mask(season_coefs[[9]], temp2_mask_lagged)
+  evi_masked_lagged = mask(season_coefs[[10]], evi_mask_lagged)
   
   # Filter outliers
   #precip_masked = calc(precip_masked, filter_outliers)
   #precip2_masked = calc(precip2_masked, filter_outliers)
   
-  return(list(precip_masked, precip2_masked, temp_masked, temp2_masked))
+  return(list(precip_masked, precip2_masked, temp_masked, temp2_masked, precip_masked_lagged, precip2_masked_lagged, temp_masked_lagged, temp2_masked_lagged, evi_masked_lagged))
 }
 
 # filter coefs
@@ -176,31 +220,46 @@ save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filter
 save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 2, sa, "precip2_signif005_zone1.png")
 save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 3, sa, "temp_signif005_zone1.png")
 save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 4, sa, "temp2_signif005_zone1.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 5, sa, "precip_signif005_zone1_lagged.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 6, sa, "precip2_signif005_zone1_lagged.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 7, sa, "temp_signif005_zone1_lagged.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 8, sa, "temp2_signif005_zone1_lagged.png")
+save_maps(djf_filtered_zone1, mam_filtered_zone1, jja_filtered_zone1, son_filtered_zone1, 9, sa, "evi_signif005_zone1_lagged.png")
 
 save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 1, sa, "precip_signif005_zone2.png")
 save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 2, sa, "precip2_signif005_zone2.png")
 save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 3, sa, "temp_signif005_zone2.png")
 save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 4, sa, "temp2_signif005_zone2.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 5, sa, "precip_signif005_zone2_lagged.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 6, sa, "precip2_signif005_zone2_lagged.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 7, sa, "temp_signif005_zone2_lagged.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 8, sa, "temp2_signif005_zone2_lagged.png")
+save_maps(djf_filtered_zone2, mam_filtered_zone2, jja_filtered_zone2, son_filtered_zone2, 9, sa, "evi_signif005_zone2_lagged.png")
 
 save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 1, sa, "precip_signif005_zone3.png")
 save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 2, sa, "precip2_signif005_zone3.png")
 save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 3, sa, "temp_signif005_zone3.png")
 save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 4, sa, "temp2_signif005_zone3.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 5, sa, "precip_signif005_zone3_lagged.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 6, sa, "precip2_signif005_zone3_lagged.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 7, sa, "temp_signif005_zone3_lagged.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 8, sa, "temp2_signif005_zone3_lagged.png")
+save_maps(djf_filtered_zone3, mam_filtered_zone3, jja_filtered_zone3, son_filtered_zone3, 9, sa, "evi_signif005_zone3_lagged.png")
 
 # Fnc to calculate optimum values
 calculate_optimum = function(season_coefs){
   # Create masks with threshold for significance
   filter_signif = function(x){ x[x > 0.05] = NA; return(x)}
-  precip_mask = calc(season_coefs[[15]], filter_signif)
-  precip2_mask = calc(season_coefs[[16]], filter_signif)
-  temp_mask = calc(season_coefs[[17]], filter_signif)
-  temp2_mask = calc(season_coefs[[18]], filter_signif)
+  precip_mask = calc(season_coefs[[23]], filter_signif)
+  precip2_mask = calc(season_coefs[[24]], filter_signif)
+  temp_mask = calc(season_coefs[[25]], filter_signif)
+  temp2_mask = calc(season_coefs[[26]], filter_signif)
   
   # Filter actual coefficients using the masks we created
-  precip_masked = mask(season_coefs[[11]], precip_mask)
-  precip2_masked = mask(season_coefs[[12]], precip2_mask)
-  temp_masked = mask(season_coefs[[13]], temp_mask)
-  temp2_masked = mask(season_coefs[[14]], temp2_mask)
+  precip_masked = mask(season_coefs[[19]], precip_mask)
+  precip2_masked = mask(season_coefs[[20]], precip2_mask)
+  temp_masked = mask(season_coefs[[21]], temp_mask)
+  temp2_masked = mask(season_coefs[[22]], temp2_mask)
   
   # Get optimum values
   optimum = list()
@@ -259,5 +318,4 @@ save_maps(djf_optimum_zone3, mam_optimum_zone3, jja_optimum_zone3, son_optimum_z
 # 0 = b1 + 2*b2*temp
 # temp = -b1/(2*b2)
 ### take second derivative 
-
 

@@ -18,25 +18,6 @@ library(maptools)
 
 # set functions ----------------------
 
-# make a matrix of all the z score values from a raster stack
-get_raster_vals <- function(data){
-  
-  z_values <- matrix(NA, nrow=259200,ncol=dim(data)[3])
-  for (i in 1:dim(data)[3]) {
-    sub_values1 <- getValues(data[[i]])
-    
-    if(i==1){
-      z_values <-sub_values1
-      
-    }else{
-      z_values <- cbind(z_values, sub_values1)
-      
-    }
-  }
-  return(z_values)
-  
-}
-
 # assign in variables ------------------------
 year <- rep(1:13, each=12)
 m_year <- rep(1:12, 13)
@@ -67,8 +48,8 @@ year_list <- list()
 for (t in 1:13){
   for (m in 1:12){
     # calculate the mean temperature of each month over the whole 14 year period (excluding each time the month of interest)
-    temp_month_mean <- calc(stack(temp_sub_unstack[m_year==m]),mean, na.rm=T)
-    temp_month_sd <- calc(stack(temp_sub_unstack[m_year==m]),sd, na.rm=T) # calculate the standard deviation 
+    temp_month_mean <- calc(stack(temp_sub_unstack[m_year==m]),mean, na.rm=F)
+    temp_month_sd <- calc(stack(temp_sub_unstack[m_year==m]),sd, na.rm=F) # calculate the standard deviation 
     temp_month_year <- stack(temp_sub_unstack[m_year==m])[[t]]
     
     # calculate the anomaly 
@@ -83,7 +64,7 @@ for (t in 1:13){
 temp_monthly_anomalies <- stack(unlist(year_list, recursive = T))
 
 # get the anomalies in a matrix and save as csv 
-temp_monthly_anomalies_vals <- get_raster_vals(stack(temp_monthly_anomalies))
+temp_monthly_anomalies_vals <- getValues(stack(temp_monthly_anomalies))
 colnames(temp_monthly_anomalies_vals) <- rep(c("December", "January", "February", "March", "April", 
                                                "May", "June", "July", "August", "September", "October", "November"), 13)
 write.csv(temp_monthly_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_monthly_anomalies.csv", quote=FALSE, row.names=FALSE)
@@ -110,11 +91,11 @@ seas_vals_all <- list()
 for (t in 1:13){
   for (m in 1:4){
     # calculate the mean temperature of each month over the whole 14 year period (excluding each time the month of interest)
-    temp_seas_mean <-calc(stack(temp_sub_unstack[seasons==m]),mean, na.rm=T)
-    temp_seas_sd <- calc(stack(temp_sub_unstack[seasons==m]),sd, na.rm=T) # calculate the standard deviation 
-    temp_mean <- stackApply(stack(temp_sub_unstack[seasons==m]), index, mean, na.rm=T)[[t]]
+    temp_seas_mean <-calc(stack(temp_sub_unstack[seasons==m]),mean, na.rm=F)
+    temp_seas_sd <- calc(stack(temp_sub_unstack[seasons==m]),sd, na.rm=F) # calculate the standard deviation 
+    temp_mean <- stackApply(stack(temp_sub_unstack[seasons==m]), index, mean, na.rm=F)[[t]]
     
-    # calculate the anomaly 
+    # calculate the anomalies
     temp_anomaly <- (temp_mean - temp_seas_mean)/temp_seas_sd
     seas_list[[m]] <- temp_anomaly
     seas_vals[[m]] <- temp_mean
@@ -128,12 +109,12 @@ temp_seas_anomalies <- stack(unlist(seas_all, recursive = T))
 temp_seas_vals <- stack(unlist(seas_vals_all, recursive = T))
 
 # get the seasonal anomalies in a matrix and save as csv 
-temp_seas_anomalies_vals <- get_raster_vals(stack(temp_seas_anomalies))
+temp_seas_anomalies_vals <- getValues(stack(temp_seas_anomalies))
 colnames(temp_seas_anomalies_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 write.csv(temp_seas_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_seas_anomalies.csv", quote=FALSE, row.names=FALSE)
 
 # get the seasonal values in a matrix and save as csv 
-temp_seasonal_vals <- get_raster_vals(stack(temp_seas_vals))
+temp_seasonal_vals <- getValues(stack(temp_seas_vals))
 colnames(temp_seasonal_vals) <- rep(c("DJF", "MAM", "JJA", "SON"), 13)
 write.csv(temp_seasonal_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_seas_vals.csv", quote=FALSE, row.names=FALSE)
 
@@ -147,11 +128,11 @@ write.csv(temp_seas_anomalies_lag2, file="/projectnb/modislc/users/rkstan/GE712/
 # calculate yearly anomalies -------------------------------------------------
 year_anom <- list()
 temp_sub_year <- dropLayer(temp_time_sub, 1)
-temp_year <- stackApply(temp_sub_year, year, fun=mean, na.rm=T)
+temp_year <- stackApply(temp_sub_year, year, fun=mean, na.rm=F)
 
 for (t in 1:13){
-temp_year_mean <-calc(temp_sub_year,mean, na.rm=T)
-temp_year_sd <-calc(temp_sub_year,sd, na.rm=T)
+temp_year_mean <-calc(temp_sub_year,mean, na.rm=F)
+temp_year_sd <-calc(temp_sub_year,sd, na.rm=F)
 temp_year_t <- temp_year[[t]]
 
 # calculate the anomaly 
@@ -162,11 +143,15 @@ year_anom[[t]] <- temp_anomaly
 temp_year_anomalies <- stack(unlist(year_anom, recursive = T))
 
 # get the year anomalies in a matrix and save as csv 
-temp_year_anomalies_vals <- get_raster_vals(stack(temp_year_anomalies))
+temp_year_anomalies_vals <- getValues(stack(temp_year_anomalies))
 colnames(temp_year_anomalies_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
                                         "2013", "2014", "2015")
 write.csv(temp_year_anomalies_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_year_anomalies.csv", quote=FALSE, row.names=FALSE)
 
+temp_year_vals <- getValues(temp_year)
+colnames(temp_year_vals) <- c("2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+                             "2013", "2014", "2015")
+write.csv(temp_year_vals, file="/projectnb/modislc/users/rkstan/GE712/outputs/temp_year_vals.csv", quote=FALSE, row.names=FALSE)
 
 # plot monthly anomalies -------------------------------------------------
 # names(temp_monthly_anomalies) <- paste0("Y", 2003:2015)
